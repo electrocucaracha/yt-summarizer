@@ -1,0 +1,64 @@
+[project]
+name = "yt-summarizer"
+version = "0.0.1"
+description = "YouTube summarizer videos"
+dependencies = [
+    "click",
+    "notion-client",
+    "youtube-transcript-api",
+    "beautifulsoup4",
+    "litellm",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=7.0",
+    "pytest-mock>=3.10",
+    "pytest-cov>=4.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project.scripts]
+yt_summarizer = "yt_summarizer:cli"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/yt_summarizer"]
+
+[tool.tox]
+legacy_tox_ini = """
+[tox]
+envlist = py312,py311,py310
+skip_missing_interpreters = true
+isolated_build = true
+
+[testenv]
+description = Run unit tests with pytest
+deps = 
+    pytest>=7.0
+    pytest-mock>=3.10
+    pytest-cov>=4.0
+extras = test
+commands = 
+    pytest {posargs:tests/}
+
+[testenv:coverage]
+description = Run tests with coverage reporting
+deps = 
+    pytest>=7.0
+    pytest-mock>=3.10
+    pytest-cov>=4.0
+extras = test
+commands = 
+    pytest --cov=src/yt_summarizer --cov-report=html --cov-report=term-missing tests/
+
+[testenv:lint]
+description = Check code style
+deps = 
+    ruff
+skip_install = true
+commands = 
+    ruff check src/ tests/
+"""
