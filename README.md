@@ -9,6 +9,8 @@
 <!-- markdown-link-check-disable-next-line -->
 
 ![visitors](https://visitor-badge.laobi.icu/badge?page_id=electrocucaracha.yt-summarizer)
+[![Scc Code Badge](https://sloc.xyz/github/electrocucaracha/yt-summarizer?category=code)](https://github.com/boyter/scc/)
+[![Scc COCOMO Badge](https://sloc.xyz/github/electrocucaracha/yt-summarizer?category=cocomo)](https://github.com/boyter/scc/)
 
 A Python automation tool that retrieves YouTube videos from a Notion database, extracts their transcripts, generates intelligent summaries using Large Language Models, and updates the database with results.
 
