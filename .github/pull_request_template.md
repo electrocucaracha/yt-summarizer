@@ -1,3 +1,5 @@
+# Pull Request
+
 ## Pull Request Checklist
 
 - [ ] I have read and followed the [CONTRIBUTING.md](CONTRIBUTING.md) guidelines.
@@ -17,7 +19,7 @@
 
 ## Type of Change
 
-- [ ] Bug fix (non-breaking change that fixes an issue)
+- [ ] Bugfix (non-breaking change that fixes an issue)
 - [ ] New feature (non-breaking change that adds functionality)
 - [ ] Breaking change (fix or feature that would cause existing functionality to change)
 - [ ] Documentation update

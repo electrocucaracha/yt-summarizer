@@ -1,6 +1,6 @@
 """Tests for the CLI module."""
 
-from unittest.mock import Mock, patch, mock_open
+from unittest.mock import Mock, mock_open, patch
 
 from click.testing import CliRunner
 
@@ -51,7 +51,9 @@ class TestCLI:
         assert result.exit_code == 0
         mock_file.assert_called_once_with("/tmp/notion-token", "r")
         mock_service_class.assert_called_once_with(
-            token="test-token-from-file", model="gpt-4", api_base="https://api.openai.com/v1"
+            token="test-token-from-file",
+            model="gpt-4",
+            api_base="https://api.openai.com/v1",
         )
 
     @patch("yt_summarizer.YouTubeSummarizerService")
@@ -75,7 +77,9 @@ class TestCLI:
 
         assert result.exit_code == 0
         mock_service_class.assert_called_once_with(
-            token="test-token-from-env", model="ollama/mistral", api_base="http://localhost:7860"
+            token="test-token-from-env",
+            model="ollama/mistral",
+            api_base="http://localhost:7860",
         )
 
     @patch("yt_summarizer.YouTubeSummarizerService")
@@ -87,9 +91,7 @@ class TestCLI:
         mock_service_class.return_value = mock_service_instance
 
         runner = CliRunner()
-        result = runner.invoke(
-            cli, ["--notion-db-id", "db-123"]
-        )
+        result = runner.invoke(cli, ["--notion-db-id", "db-123"])
 
         assert result.exit_code == 0
         mock_service_class.assert_called_once()
@@ -152,9 +154,7 @@ class TestCLI:
         mock_service_class.return_value = mock_service_instance
 
         runner = CliRunner()
-        result = runner.invoke(
-            cli, ["--notion-db-id", "db-123"]
-        )
+        result = runner.invoke(cli, ["--notion-db-id", "db-123"])
 
         assert result.exit_code == 0
         mock_service_instance.get_videos.assert_called_once_with("db-123")
@@ -170,9 +170,7 @@ class TestCLI:
         mock_service_class.return_value = mock_service_instance
 
         runner = CliRunner()
-        result = runner.invoke(
-            cli, ["--notion-db-id", "db-123"]
-        )
+        result = runner.invoke(cli, ["--notion-db-id", "db-123"])
 
         assert result.exit_code == 0
         mock_service_instance.get_videos.assert_called_once_with("db-123")
@@ -259,7 +257,9 @@ class TestCLI:
         # Should use NOTION_TOKEN from environment, not read from file
         mock_file.assert_not_called()
         mock_service_class.assert_called_once_with(
-            token="env-override-token", model="ollama/llama3.2", api_base="http://localhost:11434"
+            token="env-override-token",
+            model="ollama/llama3.2",
+            api_base="http://localhost:11434",
         )
 
     @patch("yt_summarizer.YouTubeSummarizerService")
@@ -302,7 +302,9 @@ class TestCLI:
         assert result.exit_code == 0
         # The token should be stripped of whitespace
         mock_service_class.assert_called_once_with(
-            token="test-token", model="ollama/llama3.2", api_base="http://localhost:11434"
+            token="test-token",
+            model="ollama/llama3.2",
+            api_base="http://localhost:11434",
         )
 
     @patch("yt_summarizer.YouTubeSummarizerService")

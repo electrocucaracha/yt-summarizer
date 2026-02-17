@@ -30,6 +30,20 @@ class TestLLMClient:
         assert client.model == model
         assert client.api_base == api_base
 
+    def _assert_api_call_parameters(self, mock_completion, sample_transcript):
+        """Helper to verify API call parameters."""
+        call_args = mock_completion.call_args
+        assert call_args.kwargs["model"] == "ollama/llama3.2"
+        assert call_args.kwargs["api_base"] == "http://localhost:11434"
+        assert call_args.kwargs["temperature"] == 0.1
+        assert call_args.kwargs["stream"] is False
+
+        messages = call_args.kwargs["messages"]
+        assert len(messages) == 2
+        assert messages[0]["role"] == "system"
+        assert messages[1]["role"] == "user"
+        assert sample_transcript in messages[1]["content"]
+
     @patch("yt_summarizer.llm.litellm.completion")
     def test_summarize_success(
         self, mock_completion, sample_transcript, sample_summary
@@ -45,20 +59,7 @@ class TestLLMClient:
 
         assert summary == sample_summary
         mock_completion.assert_called_once()
-
-        # Verify the call was made with correct parameters
-        call_args = mock_completion.call_args
-        assert call_args.kwargs["model"] == "ollama/llama3.2"
-        assert call_args.kwargs["api_base"] == "http://localhost:11434"
-        assert call_args.kwargs["temperature"] == 0.1
-        assert call_args.kwargs["stream"] is False
-
-        # Verify messages were passed correctly
-        messages = call_args.kwargs["messages"]
-        assert len(messages) == 2
-        assert messages[0]["role"] == "system"
-        assert messages[1]["role"] == "user"
-        assert sample_transcript in messages[1]["content"]
+        self._assert_api_call_parameters(mock_completion, sample_transcript)
 
     @patch("yt_summarizer.llm.litellm.completion")
     def test_summarize_api_error(self, mock_completion, sample_transcript):
@@ -87,20 +88,7 @@ class TestLLMClient:
 
         assert main_points == sample_main_points
         mock_completion.assert_called_once()
-
-        # Verify the call was made with correct parameters
-        call_args = mock_completion.call_args
-        assert call_args.kwargs["model"] == "ollama/llama3.2"
-        assert call_args.kwargs["api_base"] == "http://localhost:11434"
-        assert call_args.kwargs["temperature"] == 0.1
-        assert call_args.kwargs["stream"] is False
-
-        # Verify messages were passed correctly
-        messages = call_args.kwargs["messages"]
-        assert len(messages) == 2
-        assert messages[0]["role"] == "system"
-        assert messages[1]["role"] == "user"
-        assert sample_transcript in messages[1]["content"]
+        self._assert_api_call_parameters(mock_completion, sample_transcript)
 
     @patch("yt_summarizer.llm.litellm.completion")
     def test_get_main_points_api_error(self, mock_completion, sample_transcript):

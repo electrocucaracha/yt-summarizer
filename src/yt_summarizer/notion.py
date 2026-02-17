@@ -23,7 +23,7 @@ conversion between string representations and Notion API formats.
 import json
 import logging
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from notion_client import Client as NotionClient
 
@@ -302,7 +302,9 @@ class Client:
             all_properties.append(properties)
         return all_properties
 
-    def _format_property_for_update(self, prop_type: str, value: str) -> Dict[str, Any]:
+    def _format_property_for_update(
+        self, prop_type: str, value: str
+    ) -> Optional[Dict[str, Any]]:
         """Convert string value to Notion API format based on property type.
 
         Transforms a string value into the appropriate Notion API structure

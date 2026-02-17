@@ -63,11 +63,20 @@ class YouTubeVideo:
 
         Shows content lengths for debugging and logging purposes.
         """
-        return f"YouTubeVideo(url={self.url}, title={self.title}, transcript_length={len(self.transcript)}, summary_length={len(self.summary)}, main_points_length={len(self.main_points)})"
+        return (
+            f"YouTubeVideo(url={self.url}, title={self.title}, "
+            f"transcript_length={len(self.transcript)}, "
+            f"summary_length={len(self.summary)}, "
+            f"main_points_length={len(self.main_points)})"
+        )
 
     def __str__(self):
         """Return a human-readable string representation of the video data.
 
         Displays all video information in a formatted multi-line output.
         """
-        return f"URL: {self.url}\nTitle: {self.title}\nTranscript: {self.transcript}\nSummary: {self.summary}\nMain Points: {self.main_points}"
+        return (
+            f"URL: {self.url}\nTitle: {self.title}\n"
+            f"Transcript: {self.transcript}\nSummary: {self.summary}\n"
+            f"Main Points: {self.main_points}"
+        )

@@ -403,7 +403,9 @@ class TestNotionClient:
 
         client = Client(token="test-token")
         result = client.update_page_properties(
-            "db-123", "page-456", {"title": "New Title"}  # lowercase
+            "db-123",
+            "page-456",
+            {"title": "New Title"},  # lowercase
         )
 
         assert result is True
