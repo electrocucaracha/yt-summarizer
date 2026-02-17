@@ -1,0 +1,49 @@
+# SPDX-license-identifier: Apache-2.0
+##############################################################################
+# Copyright (c) 2026
+# All rights reserved. This program and the accompanying materials
+# are made available under the terms of the Apache License, Version 2.0
+# which accompanies this distribution, and is available at
+# http://www.apache.org/licenses/LICENSE-2.0
+##############################################################################
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: yt-summarizer-daily
+spec:
+  schedule: "0 0 * * *" # Runs daily at midnight
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: yt-summarizer
+              image: ghcr.io/electrocucaracha/yt-summarizer:main
+              imagePullPolicy: IfNotPresent
+              env:
+                - name: NOTION_DATABASE_ID
+                  value: "REPLACE_WITH_DATABASE_ID"
+                - name: LLM_MODEL
+                  value: "ollama/llama3.2"
+                - name: LLM_API_BASE
+                  value: "http://localhost:11434"
+                - name: NOTION_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      name: notion-secret
+                      key: secrets.txt
+              volumeMounts:
+                - name: notion-secret-volume
+                  mountPath: /etc/notion
+                  readOnly: true
+          volumes:
+            - name: notion-secret-volume
+              secret:
+                secretName: notion-secret
+                items:
+                  - key: secrets.txt
+                    path: secrets.txt
