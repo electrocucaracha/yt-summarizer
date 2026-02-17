@@ -16,3 +16,12 @@ lint:
 	-e LINTER_RULES_PATH=/ \
 	ghcr.io/super-linter/super-linter
 	uvx tox -e lint
+
+.PHONY: fmt
+fmt:
+	command -v shfmt > /dev/null || curl -s "https://i.jpillora.com/mvdan/sh!!?as=shfmt" | bash
+	shfmt -l -w -s -i 4 .
+	command -v yamlfmt > /dev/null || curl -s "https://i.jpillora.com/google/yamlfmt!!" | bash
+	yamlfmt -dstar **/*.{yaml,yml}
+	command -v prettier > /dev/null || npm install prettier
+	npx prettier . --write

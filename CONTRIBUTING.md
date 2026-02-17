@@ -12,18 +12,21 @@ Thank you for your interest in contributing to the YouTube Summarizer project. T
 ### Installation
 
 1. Clone the repository:
+
 ```bash
 git clone https://github.com/electrocucaracha/yt-summarizer.git
 cd yt-summarizer
 ```
 
 2. Install dependencies using uv:
+
 ```bash
 uv sync
 source .venv/bin/activate
 ```
 
 3. Verify installation:
+
 ```bash
 yt-summarizer --help
 ```
@@ -39,6 +42,7 @@ yt-summarizer --help
 ### Running Code Quality Checks
 
 Run linting validation:
+
 ```bash
 make lint
 ```
@@ -50,6 +54,7 @@ All contributions must include tests that cover the new functionality.
 ### Running Tests
 
 Execute all tests:
+
 ```bash
 uvx tox
 ```
@@ -66,6 +71,7 @@ uvx tox
 ### Commit Messages
 
 Use Conventional Commits specification for commit messages:
+
 - **Format**: `<type>(<scope>): <description>`
 - **Types**: feat, fix, docs, style, refactor, test, chore
 - **Examples**:
@@ -76,6 +82,7 @@ Use Conventional Commits specification for commit messages:
 ### Pull Request Process
 
 1. Create a feature branch from `main`:
+
 ```bash
 git checkout -b feature/your-feature-name
 ```
@@ -83,6 +90,7 @@ git checkout -b feature/your-feature-name
 2. Make your changes and test thoroughly
 
 3. Ensure all tests pass:
+
 ```bash
 uvx tox
 make lint
@@ -110,6 +118,7 @@ make lint
 ## Reporting Issues
 
 When reporting bugs:
+
 - Describe the problem clearly
 - Include steps to reproduce
 - Provide environment details (Python version, OS)

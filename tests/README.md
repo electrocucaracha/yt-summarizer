@@ -15,36 +15,43 @@ This directory contains comprehensive unit tests for the YouTube Summarizer appl
 ## Running Tests
 
 ### Run all tests
+
 ```bash
 pytest
 ```
 
 ### Run tests with coverage report
+
 ```bash
 pytest --cov=src/yt_summarizer --cov-report=html
 ```
 
 ### Run specific test file
+
 ```bash
 pytest tests/test_model.py
 ```
 
 ### Run specific test class
+
 ```bash
 pytest tests/test_model.py::TestYouTubeVideo
 ```
 
 ### Run specific test
+
 ```bash
 pytest tests/test_model.py::TestYouTubeVideo::test_init_with_all_fields
 ```
 
 ### Run tests with verbose output
+
 ```bash
 pytest -v
 ```
 
 ### Run tests with different log levels
+
 ```bash
 pytest -v --log-cli-level=DEBUG
 ```

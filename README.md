@@ -51,7 +51,7 @@ sequenceDiagram
     cli->>service: Process videos from database
     service->>notion: Query video records
     notion-->>service: Return video URLs and metadata
-    
+
     loop For each video
         service->>youtube: Fetch transcript and title
         youtube-->>service: Return transcript and title
@@ -62,7 +62,7 @@ sequenceDiagram
         service->>notion: Update database with results
         notion-->>service: Confirm update
     end
-    
+
     service-->>cli: Complete processing
     cli-->>user: Return summary of results
 ```
@@ -91,12 +91,14 @@ source .venv/bin/activate
 The application requires a Notion API token. By default, it reads the token from `/etc/notion/secrets.txt`. You can either:
 
 1. **Create the token file** (recommended for production):
+
 ```bash
 echo "your-notion-token-here" > /etc/notion/secrets.txt
 chmod 600 /etc/notion/secrets.txt
 ```
 
 2. **Or use environment variable** (for quick testing):
+
 ```bash
 export NOTION_TOKEN="your-notion-token-here"
 ```
@@ -123,13 +125,13 @@ yt_summarizer --notion-db-id "your-database-id" --notion-token-file "/path/to/to
 
 ## Environment Variables
 
-| Name                  | Default                      | Description                                                   |
-| --------------------- | ---------------------------- | ------------------------------------------------------------- |
-| NOTION_TOKEN          |                              | Notion API token - overrides token file (optional)            |
-| NOTION_TOKEN_FILE     | /etc/notion/secrets.txt      | Path to file containing Notion API token                      |
-| NOTION_DATABASE_ID    |                              | Notion database ID containing videos (required)               |
-| LLM_MODEL             | ollama/llama3.2              | LLM model identifier for analysis                             |
-| LLM_API_BASE          | http://localhost:11434       | Base URL for the LLM API endpoint                             |
+| Name               | Default                 | Description                                        |
+| ------------------ | ----------------------- | -------------------------------------------------- |
+| NOTION_TOKEN       |                         | Notion API token - overrides token file (optional) |
+| NOTION_TOKEN_FILE  | /etc/notion/secrets.txt | Path to file containing Notion API token           |
+| NOTION_DATABASE_ID |                         | Notion database ID containing videos (required)    |
+| LLM_MODEL          | ollama/llama3.2         | LLM model identifier for analysis                  |
+| LLM_API_BASE       | http://localhost:11434  | Base URL for the LLM API endpoint                  |
 
 ### Running in Docker
 
