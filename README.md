@@ -10,29 +10,28 @@
 
 ![visitors](https://visitor-badge.laobi.icu/badge?page_id=electrocucaracha.yt-summarizer)
 
-A Python-based automation tool that retrieves YouTube videos from a Notion database, extracts their transcripts, generates intelligent summaries using Large Language Models, and updates the database with analysis results.
+A Python automation tool that retrieves YouTube videos from a Notion database, extracts their transcripts, generates intelligent summaries using Large Language Models, and updates the database with results.
 
 ## Key Features
 
-- **Notion Database Integration**: Seamlessly retrieves video records from Notion databases containing YouTube URLs.
-- **YouTube Data Extraction**: Automatically fetches video titles and complete transcripts from YouTube.
-- **LLM-Powered Analysis**: Generates concise summaries and extracts key points using configurable language models.
-- **Transcript Management**: Handles video transcript retrieval and storage through the YouTube Transcript API.
-- **Database Updates**: Persists analysis results back to the Notion database for easy reference and collaboration.
-- **Configuration Flexibility**: Supports both local models (via Ollama) and cloud-based LLM services through LiteLLM integration.
-- **Comprehensive Logging**: Provides detailed logging output for monitoring and troubleshooting the processing pipeline.
+- **Notion Integration**: Retrieves video records from Notion databases containing YouTube URLs
+- **YouTube Transcript Extraction**: Automatically fetches video titles and transcripts
+- **LLM-Powered Summaries**: Generates concise summaries and extracts key points using configurable language models
+- **Flexible Configuration**: Supports local models via Ollama and cloud-based services through LiteLLM
+- **Database Synchronization**: Persists analysis results back to Notion for team collaboration
+- **Detailed Logging**: Monitors and troubleshoots the processing pipeline
 
 ## Use Cases
 
-- **Content Curation**: Automatically summarize video content for knowledge management and documentation.
-- **Research Archive**: Build and maintain searchable archives of video summaries for research purposes.
-- **Team Collaboration**: Store video insights and key takeaways in Notion for team access and discussion.
-- **Content Review**: Quickly review important points from videos without watching entire playbacks.
-- **Knowledge Base Development**: Create structured documentation based on video content analysis.
+- **Content Curation**: Summarize video content for knowledge management
+- **Research Archives**: Build searchable archives of video summaries
+- **Team Collaboration**: Store video insights in Notion for discussion
+- **Efficient Reviews**: Extract key points without watching entire videos
+- **Documentation**: Create structured knowledge bases from video analysis
 
 ## Workflow
 
-The application follows a complete pipeline for video processing:
+The application processes videos through a complete pipeline:
 
 ```mermaid
 sequenceDiagram
@@ -71,12 +70,12 @@ sequenceDiagram
 - Python 3.10 or higher
 - Notion API token (create at [Notion integration](https://www.notion.so/profile/integrations))
 - Notion database with video records containing YouTube URLs
-- LLM API access (either local Ollama instance or cloud-based service)
+- LLM API access (local Ollama instance or cloud-based service)
 
 ### Installation
 
 1. Clone the repository and navigate to the project directory
-2. Install the package with dependencies:
+2. Install dependencies:
 
 ```bash
 uv sync
@@ -85,7 +84,7 @@ source .venv/bin/activate
 
 ### Running the Application
 
-Execute the CLI with the required Notion database ID:
+Execute the CLI with your Notion database ID:
 
 ```bash
 export NOTION_API_TOKEN="your-notion-token-here"
@@ -104,7 +103,10 @@ yt_summarizer --notion-db-id "your-database-id" --model "ollama/llama3.2" --api-
 | Name                  | Default                      | Description                                                   |
 | --------------------- | ---------------------------- | ------------------------------------------------------------- |
 | NOTION_API_TOKEN      |                              | Notion API authentication token (required)                    |
-| NOTION_DATABASE_ID    |                              | The ID of the Notion database containing videos (required)    |
-| LLM_MODEL             | ollama/llama3.2              | The LLM model identifier to use for analysis                  |
-| LLM_API_BASE          | http://localhost:11434       | The base URL for the LLM API endpoint                         |
+| NOTION_DATABASE_ID    |                              | Notion database ID containing videos (required)               |
+| LLM_MODEL             | ollama/llama3.2              | LLM model identifier for analysis                             |
+| LLM_API_BASE          | http://localhost:11434       | Base URL for the LLM API endpoint                             |
 
+## Example
+
+See this [Notion page](https://www.notion.so/electrocucaracha/30526c1a725580a2925acf6d06c53f07?v=30526c1a7255808ca3da000ceba79566) for an example result.
