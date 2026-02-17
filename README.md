@@ -14,6 +14,8 @@
 
 A Python automation tool that retrieves YouTube videos from a Notion database, extracts their transcripts, generates intelligent summaries using Large Language Models, and updates the database with results.
 
+![Diagram](docs/assets/concept.png)
+
 ## Key Features
 
 - **Notion Integration**: Retrieves video records from Notion databases containing YouTube URLs
