@@ -125,13 +125,13 @@ yt_summarizer --notion-db-id "your-database-id" --notion-token-file "/path/to/to
 
 ## Environment Variables
 
-| Name               | Default                 | Description                                        |
-| ------------------ | ----------------------- | -------------------------------------------------- |
-| NOTION_TOKEN       |                         | Notion API token - overrides token file (optional) |
-| NOTION_TOKEN_FILE  | /etc/notion/secrets.txt | Path to file containing Notion API token           |
-| NOTION_DATABASE_ID |                         | Notion database ID containing videos (required)    |
-| LLM_MODEL          | ollama/llama3.2         | LLM model identifier for analysis                  |
-| LLM_API_BASE       | <http://localhost:11434>  | Base URL for the LLM API endpoint                  |
+| Name               | Default                  | Description                                        |
+| ------------------ | ------------------------ | -------------------------------------------------- |
+| NOTION_TOKEN       |                          | Notion API token - overrides token file (optional) |
+| NOTION_TOKEN_FILE  | /etc/notion/secrets.txt  | Path to file containing Notion API token           |
+| NOTION_DATABASE_ID |                          | Notion database ID containing videos (required)    |
+| LLM_MODEL          | ollama/llama3.2          | LLM model identifier for analysis                  |
+| LLM_API_BASE       | <http://localhost:11434> | Base URL for the LLM API endpoint                  |
 
 ### Running in Docker
 

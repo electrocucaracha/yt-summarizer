@@ -11,21 +11,21 @@
 set -o errexit
 set -o pipefail
 if [[ ${DEBUG:-false} == "true" ]]; then
-	set -o xtrace
+    set -o xtrace
 fi
 
 trap "make fmt" EXIT
 
 if ! command -v go >/dev/null; then
-	curl -fsSL http://bit.ly/install_pkg | PKG=go-lang bash
-	# shellcheck disable=SC1091
-	source /etc/profile.d/path.sh
+    curl -fsSL http://bit.ly/install_pkg | PKG=go-lang bash
+    # shellcheck disable=SC1091
+    source /etc/profile.d/path.sh
 fi
 
 go_version="$(curl -sL https://golang.org/VERSION?m=text | sed -n 's/go//;s/\..$//;1p')"
 find .github/workflows -type f \( -name '*.yml' -o -name '*.yaml' \) \
-	-exec grep -l 'go-version:' {} + \
-	-exec env go_version="${go_version}" bash -s {} + <<'EOF'
+    -exec grep -l 'go-version:' {} + \
+    -exec env go_version="${go_version}" bash -s {} + <<'EOF'
     for file; do
         sed -i \
             "s|^\([[:space:]]*go-version:[[:space:]]*\).*|\
@@ -35,7 +35,7 @@ find .github/workflows -type f \( -name '*.yml' -o -name '*.yaml' \) \
 EOF
 
 if ! command -v uvx >/dev/null; then
-	curl -LsSf https://astral.sh/uv/install.sh | sh
+    curl -LsSf https://astral.sh/uv/install.sh | sh
 fi
 uv sync --upgrade
 
@@ -43,11 +43,11 @@ uv sync --upgrade
 gh_actions=$(grep -r "uses: [A-Za-z0-9_.-]*/[\_a-z\-]*@" .github/ | sed 's/@.*//' | awk -F ': ' '{ print $3 }' | sort -u)
 exceptions=('reviewdog/action-misspell' 'actions/attest-build-provenance' 'GrantBirki/git-diff-action')
 for action in $gh_actions; do
-	if [[ ${exceptions[*]} =~ (^|[^[:alpha:]])$action([^[:alpha:]]|$) ]]; then
-		commit_hash=$(git ls-remote "https://github.com/$action" | grep 'refs/tags/[v]\?[0-9][0-9\.]*\^{}$' | sed 's|refs/tags/[vV]\?[\.]\?||g; s|\^{}$||g' | sort -u -k2 -V | tail -1 | awk '{ printf "%s # %s\n",$1,$2 }')
-	else
-		commit_hash=$(git ls-remote "https://github.com/$action" | grep 'refs/tags/[v]\?[0-9][0-9\.]*$' | sed 's|refs/tags/[vV]\?[\.]\?||g' | sort -u -k2 -V | tail -1 | awk '{ printf "%s # %s\n",$1,$2 }')
-	fi
-	# shellcheck disable=SC2267
-	grep -ElRZ "uses: $action@" .github/ | xargs -0 -l sed -i -e "s|uses: $action@.*|uses: $action@$commit_hash|g"
+    if [[ ${exceptions[*]} =~ (^|[^[:alpha:]])$action([^[:alpha:]]|$) ]]; then
+        commit_hash=$(git ls-remote "https://github.com/$action" | grep 'refs/tags/[v]\?[0-9][0-9\.]*\^{}$' | sed 's|refs/tags/[vV]\?[\.]\?||g; s|\^{}$||g' | sort -u -k2 -V | tail -1 | awk '{ printf "%s # %s\n",$1,$2 }')
+    else
+        commit_hash=$(git ls-remote "https://github.com/$action" | grep 'refs/tags/[v]\?[0-9][0-9\.]*$' | sed 's|refs/tags/[vV]\?[\.]\?||g' | sort -u -k2 -V | tail -1 | awk '{ printf "%s # %s\n",$1,$2 }')
+    fi
+    # shellcheck disable=SC2267
+    grep -ElRZ "uses: $action@" .github/ | xargs -0 -l sed -i -e "s|uses: $action@.*|uses: $action@$commit_hash|g"
 done
