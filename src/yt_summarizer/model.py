@@ -32,6 +32,7 @@ class YouTubeVideo:
         main_points: LLM-extracted key points and takeaways from the video.
     """
 
+    # pylint: disable=redefined-builtin,too-many-arguments,too-many-positional-arguments
     def __init__(
         self,
         id: str,

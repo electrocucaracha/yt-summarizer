@@ -20,6 +20,7 @@ data including transcripts, summaries, and metadata. Handles property type
 conversion between string representations and Notion API formats.
 """
 
+# pylint: disable=too-many-return-statements,too-many-branches,too-many-statements,too-many-locals
 import json
 import logging
 from datetime import datetime
@@ -60,29 +61,31 @@ class Client:
         name = user.get("name") or "Unknown Name"
         return f"{user_id}: {name}"
 
-    def _extract_value_to_string(self, property: Dict[str, Any]) -> str:
+    def _extract_value_to_string(self, prop_item: Dict[str, Any]) -> str:
         """Extract and convert a property value to string representation.
 
         Routes extraction to appropriate handler based on property object type,
         supporting both single property items and lists of property items.
 
         Args:
-            property: The Notion property object to extract.
+            prop_item: The Notion property object to extract.
 
         Returns:
             String representation of the property value.
         """
-        if property.get("object") == "property_item":
-            return self._extract_property_item_value_to_string(property)
-        elif property.get("object") == "list":
-            results = property.get("results", [])
+        if prop_item.get("object") == "property_item":
+            return self._extract_property_item_value_to_string(prop_item)
+        if prop_item.get("object") == "list":
+            results = prop_item.get("results", [])
             return ", ".join(
                 self._extract_property_item_value_to_string(result)
                 for result in results
             )
         return ""
 
-    def _extract_property_item_value_to_string(self, property: Dict[str, Any]) -> str:
+    def _extract_property_item_value_to_string(  # pylint: disable=redefined-builtin
+        self, prop_item: Dict[str, Any]
+    ) -> str:
         """Convert individual Notion property items to string based on type.
 
         Handles all Notion property types including text, dates, numbers, users,
@@ -90,30 +93,30 @@ class Client:
         Returns placeholder "???" for unsupported or incomplete property types.
 
         Args:
-            property: A Notion property item with 'type' key and type-specific data.
+            prop_item: A Notion property item with 'type' key and type-specific data.
 
         Returns:
             String representation of the property value.
         """
-        prop_type = property.get("type")
+        prop_type = prop_item.get("type")
 
         if prop_type == "checkbox":
             # Boolean property - convert to string representation
-            return str(property.get("checkbox", ""))
-        elif prop_type == "created_by":
+            return str(prop_item.get("checkbox", ""))
+        if prop_type == "created_by":
             # User who created the item
-            return self._user_to_string(property.get("created_by", {}))
-        elif prop_type == "created_time":
+            return self._user_to_string(prop_item.get("created_by", {}))
+        if prop_type == "created_time":
             # Timestamp of creation - convert to ISO format
-            ct = property.get("created_time")
+            ct = prop_item.get("created_time")
             return (
                 datetime.fromisoformat(ct.replace("Z", "+00:00")).isoformat()
                 if ct
                 else ""
             )
-        elif prop_type == "date":
+        if prop_type == "date":
             # Date property - extract start date and convert to ISO format
-            date_obj = property.get("date")
+            date_obj = prop_item.get("date")
             return (
                 datetime.fromisoformat(
                     date_obj["start"].replace("Z", "+00:00")
@@ -121,70 +124,70 @@ class Client:
                 if date_obj
                 else ""
             )
-        elif prop_type == "email":
+        if prop_type == "email":
             # Email property - return email string
-            return property.get("email") or ""
-        elif prop_type == "url":
+            return prop_item.get("email") or ""
+        if prop_type == "url":
             # URL property - return URL string
-            return property.get("url") or ""
-        elif prop_type == "number":
+            return prop_item.get("url") or ""
+        if prop_type == "number":
             # Numeric property - convert to string
-            num = property.get("number")
+            num = prop_item.get("number")
             return str(num) if isinstance(num, (int, float)) else ""
-        elif prop_type == "phone_number":
+        if prop_type == "phone_number":
             # Phone number property - return string
-            return property.get("phone_number") or ""
-        elif prop_type == "select":
+            return prop_item.get("phone_number") or ""
+        if prop_type == "select":
             # Single select property - return ID and name
-            select = property.get("select")
+            select = prop_item.get("select")
             if not select:
                 return ""
             return f"{select.get('id', '')} {select.get('name', '')}"
-        elif prop_type == "multi_select":
+        if prop_type == "multi_select":
             # Multiple select property - return comma-separated ID and name pairs
-            multi_select = property.get("multi_select", [])
+            multi_select = prop_item.get("multi_select", [])
             if not multi_select:
                 return ""
             return ", ".join(
                 f"{opt.get('id', '')} {opt.get('name', '')}" for opt in multi_select
             )
-        elif prop_type == "people":
+        if prop_type == "people":
             # Person property - convert user info to string
-            return self._user_to_string(property.get("people", {}))
-        elif prop_type == "last_edited_by":
+            return self._user_to_string(prop_item.get("people", {}))
+        if prop_type == "last_edited_by":
             # User who last edited - convert user info to string
-            return self._user_to_string(property.get("last_edited_by", {}))
-        elif prop_type == "last_edited_time":
+            return self._user_to_string(prop_item.get("last_edited_by", {}))
+        if prop_type == "last_edited_time":
             # Timestamp of last edit - convert to ISO format
-            let = property.get("last_edited_time")
+            let = prop_item.get("last_edited_time")
             return (
                 datetime.fromisoformat(let.replace("Z", "+00:00")).isoformat()
                 if let
                 else ""
             )
-        elif prop_type == "title":
+        if prop_type == "title":
             # Title property - extract plain text content
-            return property.get("title", {}).get("plain_text", "")
-        elif prop_type == "rich_text":
+            return prop_item.get("title", {}).get("plain_text", "")
+        if prop_type == "rich_text":
             # Rich text property - extract plain text content
-            return property.get("rich_text", {}).get("plain_text", "")
-        elif prop_type == "files":
+            return prop_item.get("rich_text", {}).get("plain_text", "")
+        if prop_type == "files":
             # Files property - return comma-separated file names
-            files = property.get("files", [])
+            files = prop_item.get("files", [])
             return ", ".join(file.get("name", "") for file in files)
-        elif prop_type == "formula":
+        if prop_type == "formula":
             # Formula result - handle different formula result types
-            formula = property.get("formula", {})
+            formula = prop_item.get("formula", {})
             formula_type = formula.get("type")
             if formula_type == "string":
                 return formula.get("string") or "???"
-            elif formula_type == "number":
+            if formula_type == "number":
                 num = formula.get("number")
                 return str(num) if num is not None else "???"
-            elif formula_type == "boolean":
+            if formula_type == "boolean":
                 bool_val = formula.get("boolean")
                 return str(bool_val) if bool_val is not None else "???"
-            elif formula_type == "date":
+            if formula_type == "date":
                 date_obj = formula.get("date")
                 return (
                     datetime.fromisoformat(
@@ -194,14 +197,14 @@ class Client:
                     else "???"
                 )
             return "???"
-        elif prop_type == "rollup":
+        if prop_type == "rollup":
             # Rollup property - handle different aggregation result types
-            rollup = property.get("rollup", {})
+            rollup = prop_item.get("rollup", {})
             rollup_type = rollup.get("type")
             if rollup_type == "number":
                 num = rollup.get("number")
                 return str(num) if num is not None else "???"
-            elif rollup_type == "date":
+            if rollup_type == "date":
                 date_obj = rollup.get("date")
                 return (
                     datetime.fromisoformat(
@@ -210,38 +213,38 @@ class Client:
                     if date_obj and date_obj.get("start")
                     else "???"
                 )
-            elif rollup_type == "array":
+            if rollup_type == "array":
                 # Array results are serialized as JSON
                 return json.dumps(rollup.get("array", []))
-            elif rollup_type in ("incomplete", "unsupported"):
+            if rollup_type in ("incomplete", "unsupported"):
                 return rollup_type
             return "???"
-        elif prop_type == "relation":
+        if prop_type == "relation":
             # Relation property - return related page ID
-            relation = property.get("relation")
+            relation = prop_item.get("relation")
             if relation:
                 return relation.get("id", "???")
             return "???"
-        elif prop_type == "status":
+        if prop_type == "status":
             # Status property - return status name
-            return property.get("status", {}).get("name", "")
-        elif prop_type == "button":
+            return prop_item.get("status", {}).get("name", "")
+        if prop_type == "button":
             # Button property - return button name
-            return property.get("button", {}).get("name", "")
-        elif prop_type == "unique_id":
+            return prop_item.get("button", {}).get("name", "")
+        if prop_type == "unique_id":
             # Unique ID property - combine prefix and number
-            unique_id = property.get("unique_id", {})
+            unique_id = prop_item.get("unique_id", {})
             prefix = unique_id.get("prefix") or ""
             number = unique_id.get("number") or ""
             return f"{prefix}{number}"
-        elif prop_type == "verification":
+        if prop_type == "verification":
             # Verification property - return verification state
-            return property.get("verification", {}).get("state", "")
+            return prop_item.get("verification", {}).get("state", "")
 
         # Unknown property type
         return ""
 
-    def get_database_content(self, database_id: str):
+    def get_database_content(self, database_id: str):  # pylint: disable=unused-argument
         """Retrieve all page records from a Notion database.
 
         Queries the database to get all page IDs and metadata that will be
@@ -275,9 +278,9 @@ class Client:
         """
         page = self.client.pages.retrieve(page_id=page_id)
         properties = {}
-        for name, property in page["properties"].items():
+        for name, prop_item in page["properties"].items():
             property_response = self.client.pages.properties.retrieve(
-                page_id=page_id, property_id=property["id"]
+                page_id=page_id, property_id=prop_item["id"]
             )
             properties[name] = self._extract_value_to_string(property_response)
         return properties
@@ -331,39 +334,40 @@ class Client:
             if prop_type in ("title", "rich_text"):
                 # Text properties use nested text content structure
                 return {prop_type: [{"text": {"content": value}}]}
-            elif prop_type == "checkbox":
+            if prop_type == "checkbox":
                 # Convert string to boolean
                 return {"checkbox": value.lower() in ("true", "1", "yes", "on")}
-            elif prop_type == "number":
+            if prop_type == "number":
                 # Parse as float or int depending on format
                 return {"number": float(value) if "." in value else int(value)}
-            elif prop_type == "select":
+            if prop_type == "select":
                 # Single select by name
                 return {"select": {"name": value}}
-            elif prop_type == "multi_select":
+            if prop_type == "multi_select":
                 # Multiple selections parsed from comma-separated list
                 options = [opt.strip() for opt in value.split(",")]
                 return {"multi_select": [{"name": opt} for opt in options if opt]}
-            elif prop_type == "date":
+            if prop_type == "date":
                 # Date in ISO format
                 return {"date": {"start": value}}
-            elif prop_type == "url":
+            if prop_type == "url":
                 # URL string
                 return {"url": value}
-            elif prop_type == "email":
+            if prop_type == "email":
                 # Email string
                 return {"email": value}
-            elif prop_type == "phone_number":
+            if prop_type == "phone_number":
                 # Phone number string
                 return {"phone_number": value}
-            elif prop_type == "status":
+            if prop_type == "status":
                 # Status by name
                 return {"status": {"name": value}}
-            else:
-                # Unsupported property type
-                return None
+            # Unsupported property type
+            return None
         except (ValueError, TypeError) as e:
-            logger.warning(f"Failed to format {prop_type} with value '{value}': {e}")
+            logger.warning(
+                "Failed to format %s with value '%s': %s", prop_type, value, e
+            )
             return None
 
     def get_database_schema(self, database_id: str) -> Dict[str, str]:
@@ -406,16 +410,17 @@ class Client:
             Prints debug information and warnings for troubleshooting.
         """
         # Get database schema to determine property types
-        try:
+        try:  # pylint: disable=broad-exception-caught
             database = self.client.databases.retrieve(database_id=database_id)
             db_properties = database.get("properties", {})
 
             # Debug: log database response
             logger.debug(
-                f"Database response keys: {database.keys() if isinstance(database, dict) else 'not a dict'}"
+                "Database response keys: %s",
+                list(database.keys()) if isinstance(database, dict) else "not a dict",
             )
             logger.debug(
-                f"Available properties in database: {list(db_properties.keys())}"
+                "Available properties in database: %s", list(db_properties.keys())
             )
 
             # If no properties found, try querying the page instead
@@ -425,9 +430,9 @@ class Client:
                 )
                 page = self.client.pages.retrieve(page_id=page_id)
                 db_properties = page.get("properties", {})
-                logger.debug(f"Properties from page: {list(db_properties.keys())}")
+                logger.debug("Properties from page: %s", list(db_properties.keys()))
         except Exception as e:
-            logger.error(f"Error retrieving database schema: {e}")
+            logger.error("Error retrieving database schema: %s", e)
             return False
 
         # Format properties according to their types
@@ -439,8 +444,8 @@ class Client:
             # Try to find property with case-insensitive matching
             actual_prop_name = prop_name_map.get(prop_name.lower())
             if not actual_prop_name:
-                logger.warning(f"Property '{prop_name}' not found in database schema")
-                logger.debug(f"Available properties: {list(db_properties.keys())}")
+                logger.warning("Property '%s' not found in database schema", prop_name)
+                logger.debug("Available properties: %s", list(db_properties.keys()))
                 continue
 
             # Get the property type and format the value
@@ -455,12 +460,12 @@ class Client:
             return False
 
         # Update the page via the Notion API
-        try:
+        try:  # pylint: disable=broad-exception-caught
             self.client.pages.update(
                 page_id=page_id,
                 properties=formatted_properties,
             )
             return True
         except Exception as e:
-            logger.error(f"Error updating page: {e}")
+            logger.error("Error updating page: %s", e)
             return False

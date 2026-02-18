@@ -79,14 +79,14 @@ class YouTubeSummarizerService:
                - Generate summary via LLM if missing
                - Extract main points via LLM if missing
         """
-        logger.info(f"Retrieving videos from Notion database: {notion_db_id}")
+        logger.info("Retrieving videos from Notion database: %s", notion_db_id)
         properties = self.notion_client.get_page_properties_from_database(notion_db_id)
-        logger.debug(f"Retrieved {len(properties)} records from database")
+        logger.debug("Retrieved %d records from database", len(properties))
         videos = []
         for i, prop in enumerate(properties, 1):
             # Skip records without YouTube URLs
             if not prop.get("URL"):
-                logger.debug(f"Skipping record {i}: No YouTube URL found")
+                logger.debug("Skipping record %d: No YouTube URL found", i)
                 continue
 
             # Create video object with existing data from Notion
@@ -98,28 +98,28 @@ class YouTubeSummarizerService:
                 summary=prop.get("Summary", None),
                 main_points=prop.get("Main points", None),
             )
-            logger.debug(f"Processing video {i}: {video.url}")
+            logger.debug("Processing video %d: %s", i, video.url)
             yt_client = YouTubeClient(video.url)
 
             # Fetch missing metadata from YouTube
             if not video.title:
-                logger.debug(f"Fetching missing metadata for video {i}")
+                logger.debug("Fetching missing metadata for video %d", i)
                 if not video.title:
-                    logger.debug(f"Fetching title for video {i}")
+                    logger.debug("Fetching title for video %d", i)
                     video.title = yt_client.get_video_title()
                     video.updated = True
 
             # Generate summary if not already present
             transcript = None
             if not video.summary:
-                logger.info(f"Generating summary for video {i}")
+                logger.info("Generating summary for video %d", i)
                 transcript = yt_client.get_video_transcript()
                 video.summary = self.llm_client.summarize(transcript)
                 video.updated = True
 
             # Extract main points if not already present
             if not video.main_points:
-                logger.info(f"Extracting main points for video {i}")
+                logger.info("Extracting main points for video %d", i)
                 # Fetch transcript if we didn't already fetch it for summary
                 if transcript is None:
                     transcript = yt_client.get_video_transcript()
@@ -127,9 +127,9 @@ class YouTubeSummarizerService:
                 video.updated = True
 
             videos.append(video)
-            logger.debug(f"Completed processing video {i}")
+            logger.debug("Completed processing video %d", i)
 
-        logger.info(f"Successfully processed {len(videos)} videos")
+        logger.info("Successfully processed %d videos", len(videos))
         return videos
 
     def update_video(self, notion_db_id: str, video: YouTubeVideo):
@@ -142,11 +142,11 @@ class YouTubeSummarizerService:
             notion_db_id: The Notion database ID containing the video record.
             video: The YouTubeVideo object with updated content to persist.
         """
-        logger.debug(f"Updating video record in database: {video.id}")
+        logger.debug("Updating video record in database: %s", video.id)
         properties = {
             "Title": video.title,
             "Summary": video.summary,
             "Main Points": video.main_points,
         }
         self.notion_client.update_page_properties(notion_db_id, video.id, properties)
-        logger.debug(f"Successfully updated video record: {video.id}")
+        logger.debug("Successfully updated video record: %s", video.id)

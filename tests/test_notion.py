@@ -5,11 +5,11 @@ from unittest.mock import patch
 from yt_summarizer.notion import Client
 
 
-class TestNotionClient:
+class TestNotionClient:  # pylint: disable=protected-access
     """Test cases for Notion Client class."""
 
     @patch("yt_summarizer.notion.NotionClient")
-    def test_init(self, mock_notion_client):
+    def test_init(self, mock_notion_client):  # pylint: disable=unused-argument
         """Test Notion client initialization."""
         token = "test-token-12345"
 
@@ -19,7 +19,7 @@ class TestNotionClient:
         assert client.client is not None
 
     @patch("yt_summarizer.notion.NotionClient")
-    def test_user_to_string(self, mock_notion_client):
+    def test_user_to_string(self, mock_notion_client):  # pylint: disable=unused-argument
         """Test conversion of Notion user object to string."""
         client = Client(token="test-token")
 
@@ -29,7 +29,7 @@ class TestNotionClient:
         assert result == "user-123: John Doe"
 
     @patch("yt_summarizer.notion.NotionClient")
-    def test_user_to_string_missing_name(self, mock_notion_client):
+    def test_user_to_string_missing_name(self, mock_notion_client):  # pylint: disable=unused-argument
         """Test conversion of user with missing name."""
         client = Client(token="test-token")
 
@@ -39,7 +39,7 @@ class TestNotionClient:
         assert result == "user-123: Unknown Name"
 
     @patch("yt_summarizer.notion.NotionClient")
-    def test_user_to_string_missing_id(self, mock_notion_client):
+    def test_user_to_string_missing_id(self, mock_notion_client):  # pylint: disable=unused-argument
         """Test conversion of user with missing id."""
         client = Client(token="test-token")
 
@@ -49,7 +49,10 @@ class TestNotionClient:
         assert result == ": John Doe"
 
     @patch("yt_summarizer.notion.NotionClient")
-    def test_extract_property_item_value_checkbox_true(self, mock_notion_client):
+    def test_extract_property_item_value_checkbox_true(
+        self,
+        mock_notion_client,  # pylint: disable=unused-argument
+    ):
         """Test extracting checkbox property value (true)."""
         client = Client(token="test-token")
 
@@ -59,7 +62,10 @@ class TestNotionClient:
         assert result == "True"
 
     @patch("yt_summarizer.notion.NotionClient")
-    def test_extract_property_item_value_checkbox_false(self, mock_notion_client):
+    def test_extract_property_item_value_checkbox_false(
+        self,
+        mock_notion_client,  # pylint: disable=unused-argument
+    ):
         """Test extracting checkbox property value (false)."""
         client = Client(token="test-token")
 
@@ -69,7 +75,10 @@ class TestNotionClient:
         assert result == "False"
 
     @patch("yt_summarizer.notion.NotionClient")
-    def test_extract_property_item_value_title(self, mock_notion_client):
+    def test_extract_property_item_value_title(
+        self,
+        mock_notion_client,  # pylint: disable=unused-argument
+    ):
         """Test extracting title property value."""
         client = Client(token="test-token")
 
@@ -79,7 +88,10 @@ class TestNotionClient:
         assert result == "Sample Title"
 
     @patch("yt_summarizer.notion.NotionClient")
-    def test_extract_property_item_value_rich_text(self, mock_notion_client):
+    def test_extract_property_item_value_rich_text(
+        self,
+        mock_notion_client,  # pylint: disable=unused-argument
+    ):
         """Test extracting rich_text property value."""
         client = Client(token="test-token")
 
@@ -92,7 +104,10 @@ class TestNotionClient:
         assert result == "Sample rich text"
 
     @patch("yt_summarizer.notion.NotionClient")
-    def test_extract_property_item_value_number(self, mock_notion_client):
+    def test_extract_property_item_value_number(
+        self,
+        mock_notion_client,  # pylint: disable=unused-argument
+    ):
         """Test extracting number property value."""
         client = Client(token="test-token")
 
@@ -102,7 +117,10 @@ class TestNotionClient:
         assert result == "42"
 
     @patch("yt_summarizer.notion.NotionClient")
-    def test_extract_property_item_value_select(self, mock_notion_client):
+    def test_extract_property_item_value_select(
+        self,
+        mock_notion_client,  # pylint: disable=unused-argument
+    ):
         """Test extracting select property value."""
         client = Client(token="test-token")
 
@@ -116,7 +134,10 @@ class TestNotionClient:
         assert result == "id-123 Option 1"
 
     @patch("yt_summarizer.notion.NotionClient")
-    def test_extract_property_item_value_url(self, mock_notion_client):
+    def test_extract_property_item_value_url(
+        self,
+        mock_notion_client,  # pylint: disable=unused-argument
+    ):
         """Test extracting URL property value."""
         client = Client(token="test-token")
 
@@ -126,7 +147,10 @@ class TestNotionClient:
         assert result == "https://example.com"
 
     @patch("yt_summarizer.notion.NotionClient")
-    def test_extract_property_item_value_email(self, mock_notion_client):
+    def test_extract_property_item_value_email(
+        self,
+        mock_notion_client,  # pylint: disable=unused-argument
+    ):
         """Test extracting email property value."""
         client = Client(token="test-token")
 
@@ -136,7 +160,10 @@ class TestNotionClient:
         assert result == "test@example.com"
 
     @patch("yt_summarizer.notion.NotionClient")
-    def test_extract_value_to_string_property_item(self, mock_notion_client):
+    def test_extract_value_to_string_property_item(
+        self,
+        mock_notion_client,  # pylint: disable=unused-argument
+    ):
         """Test extract_value_to_string with property_item object."""
         client = Client(token="test-token")
 
@@ -150,7 +177,10 @@ class TestNotionClient:
         assert result == "Test content"
 
     @patch("yt_summarizer.notion.NotionClient")
-    def test_extract_value_to_string_list(self, mock_notion_client):
+    def test_extract_value_to_string_list(
+        self,
+        mock_notion_client,  # pylint: disable=unused-argument
+    ):
         """Test extract_value_to_string with list object."""
         client = Client(token="test-token")
 
@@ -168,7 +198,10 @@ class TestNotionClient:
         assert ", " in result
 
     @patch("yt_summarizer.notion.NotionClient")
-    def test_format_property_for_update_title(self, mock_notion_client):
+    def test_format_property_for_update_title(
+        self,
+        mock_notion_client,  # pylint: disable=unused-argument
+    ):
         """Test formatting title property for update."""
         client = Client(token="test-token")
 
@@ -177,7 +210,10 @@ class TestNotionClient:
         assert result == {"title": [{"text": {"content": "New Title"}}]}
 
     @patch("yt_summarizer.notion.NotionClient")
-    def test_format_property_for_update_checkbox_true(self, mock_notion_client):
+    def test_format_property_for_update_checkbox_true(
+        self,
+        mock_notion_client,  # pylint: disable=unused-argument
+    ):
         """Test formatting checkbox property for update (true)."""
         client = Client(token="test-token")
 
@@ -186,7 +222,10 @@ class TestNotionClient:
         assert result == {"checkbox": True}
 
     @patch("yt_summarizer.notion.NotionClient")
-    def test_format_property_for_update_checkbox_false(self, mock_notion_client):
+    def test_format_property_for_update_checkbox_false(
+        self,
+        mock_notion_client,  # pylint: disable=unused-argument
+    ):
         """Test formatting checkbox property for update (false)."""
         client = Client(token="test-token")
 
@@ -195,7 +234,10 @@ class TestNotionClient:
         assert result == {"checkbox": False}
 
     @patch("yt_summarizer.notion.NotionClient")
-    def test_format_property_for_update_number_integer(self, mock_notion_client):
+    def test_format_property_for_update_number_integer(
+        self,
+        mock_notion_client,  # pylint: disable=unused-argument
+    ):
         """Test formatting integer number property for update."""
         client = Client(token="test-token")
 
@@ -204,7 +246,10 @@ class TestNotionClient:
         assert result == {"number": 42}
 
     @patch("yt_summarizer.notion.NotionClient")
-    def test_format_property_for_update_number_float(self, mock_notion_client):
+    def test_format_property_for_update_number_float(
+        self,
+        mock_notion_client,  # pylint: disable=unused-argument
+    ):
         """Test formatting float number property for update."""
         client = Client(token="test-token")
 
@@ -213,7 +258,10 @@ class TestNotionClient:
         assert result == {"number": 3.14}
 
     @patch("yt_summarizer.notion.NotionClient")
-    def test_format_property_for_update_select(self, mock_notion_client):
+    def test_format_property_for_update_select(
+        self,
+        mock_notion_client,  # pylint: disable=unused-argument
+    ):
         """Test formatting select property for update."""
         client = Client(token="test-token")
 
@@ -222,13 +270,14 @@ class TestNotionClient:
         assert result == {"select": {"name": "Option 1"}}
 
     @patch("yt_summarizer.notion.NotionClient")
-    def test_format_property_for_update_multi_select(self, mock_notion_client):
+    def test_format_property_for_update_multi_select(
+        self,
+        mock_notion_client,  # pylint: disable=unused-argument
+    ):
         """Test formatting multi_select property for update."""
         client = Client(token="test-token")
 
-        result = client._format_property_for_update(
-            "multi_select", "Option1, Option2, Option3"
-        )
+        result = client._format_property_for_update("multi_select", "Option1, Option2, Option3")
 
         assert result == {
             "multi_select": [
@@ -239,7 +288,10 @@ class TestNotionClient:
         }
 
     @patch("yt_summarizer.notion.NotionClient")
-    def test_format_property_for_update_url(self, mock_notion_client):
+    def test_format_property_for_update_url(
+        self,
+        mock_notion_client,  # pylint: disable=unused-argument
+    ):
         """Test formatting URL property for update."""
         client = Client(token="test-token")
 
@@ -248,7 +300,10 @@ class TestNotionClient:
         assert result == {"url": "https://example.com"}
 
     @patch("yt_summarizer.notion.NotionClient")
-    def test_format_property_for_update_email(self, mock_notion_client):
+    def test_format_property_for_update_date(
+        self,
+        mock_notion_client,  # pylint: disable=unused-argument
+    ):
         """Test formatting email property for update."""
         client = Client(token="test-token")
 
@@ -257,7 +312,9 @@ class TestNotionClient:
         assert result == {"email": "test@example.com"}
 
     @patch("yt_summarizer.notion.NotionClient")
-    def test_format_property_for_update_empty_value(self, mock_notion_client):
+    def test_format_property_for_update_empty_value(  # pylint: disable=unused-argument
+        self, mock_notion_client
+    ):
         """Test formatting with empty value returns None."""
         client = Client(token="test-token")
 
@@ -315,12 +372,8 @@ class TestNotionClient:
             {"id": "page-2"},
         ]
 
-        mock_notion_client.return_value.search.return_value = {
-            "results": [{"id": "ds-1"}]
-        }
-        mock_notion_client.return_value.data_sources.query.return_value = {
-            "results": mock_pages
-        }
+        mock_notion_client.return_value.search.return_value = {"results": [{"id": "ds-1"}]}
+        mock_notion_client.return_value.data_sources.query.return_value = {"results": mock_pages}
         mock_notion_client.return_value.pages.retrieve.return_value = {
             "properties": {
                 "Title": {"id": "title-id", "type": "title"},
@@ -383,9 +436,7 @@ class TestNotionClient:
         mock_notion_client.return_value.databases.retrieve.return_value = mock_database
 
         client = Client(token="test-token")
-        result = client.update_page_properties(
-            "db-123", "page-456", {"NonExistent": "Value"}
-        )
+        result = client.update_page_properties("db-123", "page-456", {"NonExistent": "Value"})
 
         assert result is False
 
@@ -421,13 +472,9 @@ class TestNotionClient:
         }
 
         mock_notion_client.return_value.databases.retrieve.return_value = mock_database
-        mock_notion_client.return_value.pages.update.side_effect = Exception(
-            "API Error"
-        )
+        mock_notion_client.return_value.pages.update.side_effect = Exception("API Error")
 
         client = Client(token="test-token")
-        result = client.update_page_properties(
-            "db-123", "page-456", {"Title": "New Title"}
-        )
+        result = client.update_page_properties("db-123", "page-456", {"Title": "New Title"})
 
         assert result is False

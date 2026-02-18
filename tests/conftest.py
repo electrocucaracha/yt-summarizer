@@ -45,7 +45,9 @@ def sample_main_points():
 
 
 @pytest.fixture
-def mock_youtube_response_html(video_id):
+def mock_youtube_response_html(
+    video_id,  # pylint: disable=unused-argument,redefined-outer-name
+):
     """Mock HTML response from YouTube page."""
     return """
     <!DOCTYPE html>

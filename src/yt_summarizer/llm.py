@@ -43,7 +43,7 @@ class Client:
         self.model = model
         self.api_base = api_base
         logger.debug(
-            f"Initialized LLM client with model: {model}, api_base: {api_base}"
+            "Initialized LLM client with model: %s, api_base: %s", model, api_base
         )
 
     def summarize(self, text: str) -> str:
@@ -59,7 +59,7 @@ class Client:
             A concise summary of the input text (typically 3-5 sentences).
         """
         logger.info("Generating summary using LLM")
-        logger.debug(f"Summarizing {len(text)} characters of text")
+        logger.debug("Summarizing %d characters of text", len(text))
         try:
             messages = [
                 {
@@ -94,10 +94,12 @@ class Client:
                 stream=False,
             )
             summary = response.choices[0].message.content
-            logger.debug(f"Successfully generated summary of {len(summary)} characters")
+            logger.debug(
+                "Successfully generated summary of %d characters", len(summary)
+            )
             return summary
         except Exception as e:
-            logger.error(f"Failed to generate summary: {e}")
+            logger.error("Failed to generate summary: %s", e)
             raise
 
     def get_main_points(self, text: str) -> str:
@@ -113,7 +115,7 @@ class Client:
             A formatted string with bullet points of the main ideas and takeaways.
         """
         logger.info("Extracting main points using LLM")
-        logger.debug(f"Extracting main points from {len(text)} characters of text")
+        logger.debug("Extracting main points from %d characters of text", len(text))
         try:
             messages = [
                 {
@@ -129,9 +131,11 @@ class Client:
                 {
                     "role": "user",
                     "content": (
-                        "From the following transcript, extract the key points as concise bullet points. "
+                        "From the following transcript, extract the key points as "
+                        "concise bullet points. "
                         "Do not include explanations, introductions, or conclusions. "
-                        "Do not add any information not explicitly stated in the transcript. "
+                        "Do not add any information not explicitly stated in the "
+                        "transcript. "
                         "Ensure the response is no longer than 2000 characters, "
                         "including spaces.\n\n"
                         f"{text}"
@@ -147,9 +151,10 @@ class Client:
             )
             main_points = response.choices[0].message.content
             logger.debug(
-                f"Successfully extracted main points of {len(main_points)} characters"
+                "Successfully extracted main points of %d characters",
+                len(main_points),
             )
             return main_points
         except Exception as e:
-            logger.error(f"Failed to extract main points: {e}")
+            logger.error("Failed to extract main points: %s", e)
             raise

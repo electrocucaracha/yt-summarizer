@@ -3,7 +3,6 @@
 from unittest.mock import Mock, mock_open, patch
 
 from click.testing import CliRunner
-
 from yt_summarizer import cli
 
 
@@ -49,7 +48,7 @@ class TestCLI:
         )
 
         assert result.exit_code == 0
-        mock_file.assert_called_once_with("/tmp/notion-token", "r")
+        mock_file.assert_called_once_with("/tmp/notion-token", "r", encoding="utf-8")
         mock_service_class.assert_called_once_with(
             token="test-token-from-file",
             model="gpt-4",
@@ -84,7 +83,9 @@ class TestCLI:
 
     @patch("yt_summarizer.YouTubeSummarizerService")
     @patch("builtins.open", new_callable=mock_open, read_data="default-token")
-    def test_cli_default_model(self, mock_file, mock_service_class):
+    def test_cli_default_model(  # pylint: disable=unused-argument
+        self, mock_file, mock_service_class
+    ):
         """Test CLI uses default model when not specified."""
         mock_service_instance = Mock()
         mock_service_instance.get_videos.return_value = []
@@ -101,7 +102,9 @@ class TestCLI:
 
     @patch("yt_summarizer.YouTubeSummarizerService")
     @patch("builtins.open", new_callable=mock_open, read_data="test-token")
-    def test_cli_log_level_options(self, mock_file, mock_service_class):
+    def test_cli_log_level_options(  # pylint: disable=unused-argument
+        self, mock_file, mock_service_class
+    ):
         """Test that all log level options are accepted."""
         mock_service_instance = Mock()
         mock_service_instance.get_videos.return_value = []
@@ -123,7 +126,9 @@ class TestCLI:
             assert result.exit_code == 0
 
     @patch("yt_summarizer.YouTubeSummarizerService")
-    def test_cli_invalid_log_level(self, mock_service_class):
+    def test_cli_invalid_log_level(  # pylint: disable=unused-argument
+        self, mock_service_class
+    ):
         """Test CLI rejects invalid log level."""
         runner = CliRunner()
         result = runner.invoke(
@@ -140,7 +145,9 @@ class TestCLI:
 
     @patch("yt_summarizer.YouTubeSummarizerService")
     @patch("builtins.open", new_callable=mock_open, read_data="test-token")
-    def test_cli_with_videos_processing(self, mock_file, mock_service_class):
+    def test_cli_with_videos_processing(  # pylint: disable=unused-argument
+        self, mock_file, mock_service_class
+    ):
         """Test CLI successfully processes and updates only changed videos."""
         mock_service_instance = Mock()
         mock_video1 = Mock()
@@ -167,7 +174,9 @@ class TestCLI:
 
     @patch("yt_summarizer.YouTubeSummarizerService")
     @patch("builtins.open", new_callable=mock_open, read_data="test-token")
-    def test_cli_empty_videos_list(self, mock_file, mock_service_class):
+    def test_cli_empty_videos_list(  # pylint: disable=unused-argument
+        self, mock_file, mock_service_class
+    ):
         """Test CLI handles empty videos list."""
         mock_service_instance = Mock()
         mock_service_instance.get_videos.return_value = []
@@ -191,7 +200,7 @@ class TestCLI:
         assert result.exit_code != 0
 
     @patch("builtins.open", new_callable=mock_open, read_data="test-token")
-    def test_cli_missing_database_id(self, mock_file):
+    def test_cli_missing_database_id(self, mock_file):  # pylint: disable=unused-argument
         """Test CLI handles missing database ID."""
         runner = CliRunner()
         result = runner.invoke(cli, [])
@@ -202,7 +211,9 @@ class TestCLI:
 
     @patch("yt_summarizer.YouTubeSummarizerService")
     @patch("builtins.open", new_callable=mock_open, read_data="")
-    def test_cli_empty_token_file(self, mock_file, mock_service_class):
+    def test_cli_empty_token_file(  # pylint: disable=unused-argument
+        self, mock_file, mock_service_class
+    ):
         """Test CLI handles empty token file."""
         runner = CliRunner()
         result = runner.invoke(
@@ -220,7 +231,9 @@ class TestCLI:
         assert "empty" in str(result.exception).lower()
 
     @patch("yt_summarizer.YouTubeSummarizerService")
-    def test_cli_missing_token_file(self, mock_service_class):
+    def test_cli_missing_token_file(  # pylint: disable=unused-argument
+        self, mock_service_class
+    ):
         """Test CLI handles missing token file."""
         runner = CliRunner()
         result = runner.invoke(
@@ -282,11 +295,13 @@ class TestCLI:
         )
 
         assert result.exit_code == 0
-        mock_file.assert_called_once_with("/custom/token-file", "r")
+        mock_file.assert_called_once_with("/custom/token-file", "r", encoding="utf-8")
 
     @patch("yt_summarizer.YouTubeSummarizerService")
     @patch("builtins.open", new_callable=mock_open, read_data="test-token\n")
-    def test_cli_token_file_whitespace_handling(self, mock_file, mock_service_class):
+    def test_cli_token_file_whitespace_handling(  # pylint: disable=unused-argument
+        self, mock_file, mock_service_class
+    ):
         """Test that whitespace is stripped from token file."""
         mock_service_instance = Mock()
         mock_service_instance.get_videos.return_value = []
@@ -313,7 +328,9 @@ class TestCLI:
 
     @patch("yt_summarizer.YouTubeSummarizerService")
     @patch("builtins.open", new_callable=mock_open, read_data="test-token")
-    def test_cli_case_insensitive_log_level(self, mock_file, mock_service_class):
+    def test_cli_case_insensitive_log_level(  # pylint: disable=unused-argument
+        self, mock_file, mock_service_class
+    ):
         """Test that log level is case-insensitive."""
         mock_service_instance = Mock()
         mock_service_instance.get_videos.return_value = []
@@ -334,7 +351,9 @@ class TestCLI:
 
     @patch("yt_summarizer.YouTubeSummarizerService")
     @patch("builtins.open", new_callable=mock_open, read_data="test-token")
-    def test_cli_skip_update_when_not_updated(self, mock_file, mock_service_class):
+    def test_cli_skip_update_when_not_updated(  # pylint: disable=unused-argument
+        self, mock_file, mock_service_class
+    ):
         """Test that update_video is not called when video.updated is False."""
         mock_service_instance = Mock()
 
@@ -357,13 +376,13 @@ class TestCLI:
 
         assert result.exit_code == 0
         # Should only update the video where updated=True
-        mock_service_instance.update_video.assert_called_once_with(
-            "db-123", mock_video2
-        )
+        mock_service_instance.update_video.assert_called_once_with("db-123", mock_video2)
 
     @patch("yt_summarizer.YouTubeSummarizerService")
     @patch("builtins.open", new_callable=mock_open, read_data="test-token")
-    def test_cli_only_update_changed_videos(self, mock_file, mock_service_class):
+    def test_cli_only_update_changed_videos(  # pylint: disable=unused-argument
+        self, mock_file, mock_service_class
+    ):
         """Test that only videos with updated=True trigger database updates."""
         mock_service_instance = Mock()
 
@@ -404,7 +423,9 @@ class TestCLI:
     @patch("yt_summarizer.YouTubeSummarizerService")
     @patch("builtins.open", new_callable=mock_open, read_data="test-token")
     def test_cli_no_updates_when_all_videos_unchanged(
-        self, mock_file, mock_service_class
+        self,
+        mock_file,  # pylint: disable=unused-argument
+        mock_service_class,  # pylint: disable=unused-argument
     ):
         """Test that update_video is never called when no videos are updated."""
         mock_service_instance = Mock()

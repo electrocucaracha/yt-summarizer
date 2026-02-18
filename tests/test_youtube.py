@@ -3,6 +3,7 @@
 from unittest.mock import Mock, patch
 
 import pytest
+import requests
 
 from yt_summarizer.youtube import Client
 
@@ -29,7 +30,7 @@ class TestYouTubeClient:
             Client(url=invalid_url)
 
     @patch("yt_summarizer.youtube.YouTubeTranscriptApi")
-    def test_get_video_transcript_success(
+    def test_get_video_transcript_success(  # pylint: disable=unused-argument
         self, mock_transcript_api, youtube_url, video_id, sample_transcript
     ):
         """Test successful video transcript retrieval."""
@@ -67,7 +68,9 @@ class TestYouTubeClient:
     def test_get_video_title_success(self, mock_requests_get, youtube_url):
         """Test successful video title extraction."""
         mock_response = Mock()
-        mock_response.text = '<html><head><meta property="og:title" content="Sample Video Title"></head></html>'
+        mock_response.text = (
+            '<html><head><meta property="og:title" content="Sample Video Title"></head></html>'
+        )
         mock_response.raise_for_status = Mock()
         mock_requests_get.return_value = mock_response
 
@@ -93,7 +96,9 @@ class TestYouTubeClient:
     @patch("yt_summarizer.youtube.requests.get")
     def test_get_video_title_request_error(self, mock_requests_get, youtube_url):
         """Test video title extraction when request fails."""
-        mock_requests_get.side_effect = Exception("Connection error")
+        mock_requests_get.side_effect = requests.exceptions.ConnectionError(
+            "Connection error"
+        )
 
         client = Client(url=youtube_url)
         title = client.get_video_title()
@@ -104,7 +109,9 @@ class TestYouTubeClient:
     def test_get_video_title_http_error(self, mock_requests_get, youtube_url):
         """Test video title extraction when HTTP error occurs."""
         mock_response = Mock()
-        mock_response.raise_for_status.side_effect = Exception("404 Not Found")
+        mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError(
+            "404 Not Found"
+        )
         mock_requests_get.return_value = mock_response
 
         client = Client(url=youtube_url)
@@ -135,9 +142,7 @@ class TestYouTubeClient:
                     pass
 
     @patch("yt_summarizer.youtube.YouTubeTranscriptApi")
-    def test_get_video_transcript_empty_snippets(
-        self, mock_transcript_api, youtube_url
-    ):
+    def test_get_video_transcript_empty_snippets(self, mock_transcript_api, youtube_url):
         """Test transcript retrieval when API returns empty snippets."""
         mock_transcript_obj = Mock()
         mock_transcript_obj.snippets = []
@@ -149,13 +154,13 @@ class TestYouTubeClient:
         assert transcript == ""
 
     @patch("yt_summarizer.youtube.requests.get")
-    def test_get_video_title_with_special_characters(
-        self, mock_requests_get, youtube_url
-    ):
+    def test_get_video_title_with_special_characters(self, mock_requests_get, youtube_url):
         """Test title extraction with special characters."""
         special_title = "Video Title with Quotes & Special Chars"
         mock_response = Mock()
-        mock_response.text = f'<html><head><meta property="og:title" content="{special_title}"></head></html>'
+        mock_response.text = (
+            f'<html><head><meta property="og:title" content="{special_title}"></head></html>'
+        )
         mock_response.raise_for_status = Mock()
         mock_requests_get.return_value = mock_response
 

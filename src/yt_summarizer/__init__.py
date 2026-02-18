@@ -43,16 +43,16 @@ def _read_token_from_file(file_path: str) -> str:
         ValueError: If the token file is empty.
     """
     try:
-        with open(file_path, "r") as f:
+        with open(file_path, "r", encoding="utf-8") as f:
             token = f.read().strip()
             if not token:
                 raise ValueError(f"Token file '{file_path}' is empty")
             return token
-    except FileNotFoundError:
+    except FileNotFoundError as exc:
         raise FileNotFoundError(
             f"Notion token file not found at '{file_path}'. "
             "Please provide a token file or set NOTION_TOKEN environment variable."
-        )
+        ) from exc
 
 
 @click.command()
@@ -85,8 +85,9 @@ def cli(
     Args:
         notion_db_id: The Notion database ID containing videos to process.
             Can be provided as --notion-db-id flag or NOTION_DATABASE_ID env var.
-        notion_token_file: Path to file containing Notion API token (default: /etc/notion/secrets.txt).
-            Can be set via NOTION_TOKEN_FILE environment variable, or use NOTION_TOKEN env var to override.
+        notion_token_file: Path to file containing Notion API token
+            (default: /etc/notion/secrets.txt). Can be set via NOTION_TOKEN_FILE
+            environment variable, or use NOTION_TOKEN env var to override.
         model: The LLM model identifier (default: ollama/llama3.2).
             Can be set via LLM_MODEL environment variable.
         api_base: The LLM API base URL (default: http://localhost:11434).
@@ -104,9 +105,9 @@ def cli(
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
     logger = logging.getLogger(__name__)
-    logger.debug(f"Starting YouTube summarizer with log level: {log_level}")
-    logger.info(f"Using model: {model}")
-    logger.info(f"Using API base: {api_base}")
+    logger.debug("Starting YouTube summarizer with log level: %s", log_level)
+    logger.info("Using model: %s", model)
+    logger.info("Using API base: %s", api_base)
 
     try:
         # Get token from environment variable or read from file
@@ -115,7 +116,7 @@ def cli(
             logger.debug("Using Notion token from NOTION_TOKEN environment variable")
         else:
             token = _read_token_from_file(notion_token_file)
-            logger.debug(f"Loaded Notion token from file: {notion_token_file}")
+            logger.debug("Loaded Notion token from file: %s", notion_token_file)
     except (FileNotFoundError, ValueError) as e:
         logger.error(str(e))
         raise
@@ -125,7 +126,7 @@ def cli(
 
     for video in service.get_videos(notion_db_id):
         if video.updated:
-            logger.debug(f"Processing video: {video}")
+            logger.debug("Processing video: %s", video)
             service.update_video(notion_db_id, video)
 
     logger.info("YouTube summarizer completed successfully")

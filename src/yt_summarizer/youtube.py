@@ -49,7 +49,7 @@ class Client:
         self.url = url
         query = urlparse(url).query
         self.video_id = parse_qs(query)["v"][0]
-        logger.debug(f"Initialized YouTube client for video ID: {self.video_id}")
+        logger.debug("Initialized YouTube client for video ID: %s", self.video_id)
 
     def get_video_transcript(self) -> str:
         """Retrieve the complete transcript of the YouTube video.
@@ -64,19 +64,20 @@ class Client:
         Raises:
             Exception: If transcript is unavailable or API call fails.
         """
-        logger.info(f"Fetching transcript for video ID: {self.video_id}")
+        logger.info("Fetching transcript for video ID: %s", self.video_id)
         try:
             transcript = YouTubeTranscriptApi().fetch(self.video_id)
             transcript_text = " ".join(
                 [snippet.text for snippet in transcript.snippets]
             )
             logger.debug(
-                f"Successfully retrieved transcript with {len(transcript.snippets)} snippets"
+                "Successfully retrieved transcript with %d snippets",
+                len(transcript.snippets),
             )
             return transcript_text
         except Exception as e:
             logger.error(
-                f"Failed to fetch transcript for video ID {self.video_id}: {e}"
+                "Failed to fetch transcript for video ID %s: %s", self.video_id, e
             )
             raise
 
@@ -89,7 +90,7 @@ class Client:
         Returns:
             The video title as a string, or "Title not found" if extraction fails.
         """
-        logger.info(f"Fetching title for video ID: {self.video_id}")
+        logger.info("Fetching title for video ID: %s", self.video_id)
         try:
             response = requests.get(self.url)
             response.raise_for_status()
@@ -99,8 +100,11 @@ class Client:
             # Extract title from Open Graph meta tag for reliable results
             title_tag = soup.find("meta", property="og:title")
             title = title_tag["content"] if title_tag else "Title not found"
-            logger.debug(f"Successfully retrieved title: {title}")
+            logger.debug("Successfully retrieved title: %s", title)
             return title
-        except Exception as e:
-            logger.error(f"Failed to fetch title for video ID {self.video_id}: {e}")
+        except (
+            requests.exceptions.RequestException,
+            requests.exceptions.HTTPError,
+        ) as e:
+            logger.error("Failed to fetch title for video ID %s: %s", self.video_id, e)
             return "Title not found"
