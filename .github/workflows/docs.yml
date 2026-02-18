@@ -1,0 +1,46 @@
+# SPDX-license-identifier: Apache-2.0
+##############################################################################
+# Copyright (c) 2026
+# All rights reserved. This program and the accompanying materials
+# are made available under the terms of the Apache License, Version 2.0
+# which accompanies this distribution, and is available at
+# http://www.apache.org/licenses/LICENSE-2.0
+##############################################################################
+name: Verify Documentation
+# yamllint disable-line rule:truthy
+on:
+  push:
+    paths:
+      - "**.md"
+  pull_request:
+jobs:
+  check-broken-links:
+    name: Check documentation external links
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
+        with:
+          persist-credentials: false
+      - name: Check broken links
+        uses: tcort/github-action-markdown-link-check@e7c7a18363c842693fadde5d41a3bd3573a7a225 # 1.1.2
+  check-instructions:
+    runs-on: ubuntu-latest
+    name: Check documentation instructions
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
+        with:
+          persist-credentials: false
+      - name: Install uv
+        uses: astral-sh/setup-uv@eac588ad8def6316056a12d4907a9d4d84ff7a3b # 7.3.0
+      - name: Setup Go
+        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # 6.2.0
+        with:
+          go-version: "^1.26"
+      - name: Install runme CLI
+        run: go install github.com/runmedev/runme/v3@latest
+      - name: Check Development environment setup
+        run: ~/go/bin/runme run contributing.install contributing.verify
+      - name: Check Development process
+        run: ~/go/bin/runme run --parallel contributing.test contributing.fmt

@@ -7,28 +7,20 @@ Thank you for your interest in contributing to the YouTube Summarizer project. T
 ### Prerequisites
 
 - Python 3.10 or higher
-- Git
 
 ### Installation
 
-1. Clone the repository:
+1. Install dependencies using uv:
 
-```bash
-git clone https://github.com/electrocucaracha/yt-summarizer.git
-cd yt-summarizer
-```
-
-2. Install dependencies using uv:
-
-```bash
+```bash { name=contributing.install }
 uv sync
 source .venv/bin/activate
 ```
 
-3. Verify installation:
+2. Verify installation:
 
-```bash
-yt-summarizer --help
+```bash { name=contributing.verify }
+yt_summarizer --help
 ```
 
 ## Code Standards
@@ -43,8 +35,16 @@ yt-summarizer --help
 
 Run linting validation:
 
-```bash
+```bash { name=contributing.lint }
 make lint
+```
+
+### Formatting code
+
+Run formatting fixer:
+
+```bash { name=contributing.fmt }
+make fmt
 ```
 
 ## Testing
@@ -55,7 +55,7 @@ All contributions must include tests that cover the new functionality.
 
 Execute all tests:
 
-```bash
+```bash { name=contributing.test }
 uvx tox
 ```
 
@@ -81,20 +81,11 @@ Use Conventional Commits specification for commit messages:
 
 ### Pull Request Process
 
-1. Create a feature branch from `main`:
-
-```bash
-git checkout -b feature/your-feature-name
-```
+1. Create a feature branch from `master`
 
 2. Make your changes and test thoroughly
 
-3. Ensure all tests pass:
-
-```bash
-uvx tox
-make lint
-```
+3. Ensure all tests pass and there is no linting issues
 
 4. Push to your fork and submit a pull request
 

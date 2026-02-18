@@ -25,23 +25,12 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # 6.2.0
         with:
-          go-version: "^1.25"
+          go-version: "^1.26"
           cache: false
       - name: Install dependencies
         run: go install github.com/boyter/scc/v3@latest
       - name: Run scc tool
         run: scc --format wide
-  check-broken-links:
-    name: Check documentation external links
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
-        with:
-          persist-credentials: false
-      - name: Check broken links
-        uses: tcort/github-action-markdown-link-check@e7c7a18363c842693fadde5d41a3bd3573a7a225 # 1.1.2
   check-super-linter:
     name: Check syntax (super-linter)
     runs-on: ubuntu-latest
@@ -56,7 +45,7 @@ jobs:
           persist-credentials: false
       - name: Run super-linter validation
         id: linter-validation
-        uses: super-linter/super-linter@12562e48d7059cf666c43a4ecb0d3b5a2b31bd9e # 8.4.0
+        uses: super-linter/super-linter@61abc07d755095a68f4987d1c2c3d1d64408f1f9 # 8.5.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           LINTER_RULES_PATH: /
@@ -69,7 +58,7 @@ jobs:
         if: failure()
         run: |
           find ./super-linter-output/super-linter/ -name '*.json' -exec sh -c 'jq -e ".Exitval != 0" "$1" >/dev/null && printf "%s\0" "$1"' _ {} \; | xargs -0 jq -s '.' > linter-errors.json
-      - uses: actions/ai-inference@a6101c89c6feaecc585efdd8d461f18bb7896f20 # 2.0.5
+      - uses: actions/ai-inference@a380166897b5408b8fb7dddd148142794cb5624a # 2.0.6
         id: ai-linter-analysis
         if: failure()
         with:
