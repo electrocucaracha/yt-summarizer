@@ -8,7 +8,7 @@ WORKDIR /app
 
 COPY . /app/
 
-RUN apk add --no-cache gcc=14.2.0-r4 musl-dev=1.2.5_pre1-r0
+RUN apk add --no-cache gcc=15.2.0-r2 musl-dev=1.2.5-r21
 
 RUN uv sync --no-editable && \
     uvx pex -o /tmp/yt-summarizer -c yt_summarizer --include-tools .
