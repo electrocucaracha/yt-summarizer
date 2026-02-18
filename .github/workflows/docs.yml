@@ -13,6 +13,8 @@ on:
     paths:
       - "**.md"
   pull_request:
+permissions:
+  contents: read
 jobs:
   check-broken-links:
     name: Check documentation external links
@@ -28,6 +30,8 @@ jobs:
   check-instructions:
     runs-on: ubuntu-latest
     name: Check documentation instructions
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
         with:
