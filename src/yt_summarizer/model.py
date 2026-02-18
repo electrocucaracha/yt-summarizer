@@ -57,6 +57,7 @@ class YouTubeVideo:
         self.transcript = transcript
         self.summary = summary
         self.main_points = main_points
+        self.updated = False
 
     def __repr__(self):
         """Return a detailed representation of the YouTubeVideo object.

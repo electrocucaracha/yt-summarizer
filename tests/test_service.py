@@ -320,3 +320,209 @@ class TestYouTubeSummarizerService:
         assert videos[0].id == "page-1"
         assert videos[1].id == "page-2"
         assert videos[2].id == "page-3"
+
+    @patch("yt_summarizer.service.YouTubeClient")
+    @patch("yt_summarizer.service.NotionClient")
+    @patch("yt_summarizer.service.LLMClient")
+    def test_updated_flag_false_when_all_data_present(
+        self, mock_llm_client, mock_notion_client, mock_youtube_client
+    ):
+        """Test that updated flag is False when all data already exists."""
+        videos_data = [
+            {
+                "ID": "page-1",
+                "URL": "https://www.youtube.com/watch?v=abc123",
+                "Title": "Existing Title",
+                "Transcript": "Existing Transcript",
+                "Summary": "Existing Summary",
+                "Main points": "Existing Points",
+            }
+        ]
+
+        self._setup_mocks(
+            mock_llm_client, mock_notion_client, mock_youtube_client, videos_data
+        )
+
+        service = YouTubeSummarizerService(token="test-token")
+        videos = service.get_videos("db-123")
+
+        assert videos[0].updated is False
+        # No API calls should be made when all data exists
+        mock_youtube_client.return_value.get_video_title.assert_not_called()
+        mock_youtube_client.return_value.get_video_transcript.assert_not_called()
+        mock_llm_client.return_value.summarize.assert_not_called()
+        mock_llm_client.return_value.get_main_points.assert_not_called()
+
+    @patch("yt_summarizer.service.YouTubeClient")
+    @patch("yt_summarizer.service.NotionClient")
+    @patch("yt_summarizer.service.LLMClient")
+    def test_updated_flag_true_when_title_fetched(
+        self, mock_llm_client, mock_notion_client, mock_youtube_client
+    ):
+        """Test that updated flag is True when title is fetched from YouTube."""
+        videos_data = [
+            {
+                "ID": "page-1",
+                "URL": "https://www.youtube.com/watch?v=abc123",
+                "Title": "",  # Missing title
+                "Summary": "Existing Summary",
+                "Main points": "Existing Points",
+            }
+        ]
+
+        mock_yt_instance = self._setup_mocks(
+            mock_llm_client, mock_notion_client, mock_youtube_client, videos_data
+        )
+        mock_yt_instance.get_video_title.return_value = "Fetched Title"
+
+        service = YouTubeSummarizerService(token="test-token")
+        videos = service.get_videos("db-123")
+
+        assert videos[0].updated is True
+        assert videos[0].title == "Fetched Title"
+        mock_yt_instance.get_video_title.assert_called_once()
+        # Transcript should not be fetched if summary and main_points exist
+        mock_yt_instance.get_video_transcript.assert_not_called()
+
+    @patch("yt_summarizer.service.YouTubeClient")
+    @patch("yt_summarizer.service.NotionClient")
+    @patch("yt_summarizer.service.LLMClient")
+    def test_updated_flag_true_when_summary_generated(
+        self, mock_llm_client, mock_notion_client, mock_youtube_client
+    ):
+        """Test that updated flag is True when summary is generated."""
+        videos_data = [
+            {
+                "ID": "page-1",
+                "URL": "https://www.youtube.com/watch?v=abc123",
+                "Title": "Existing Title",
+                "Summary": None,  # Missing summary
+                "Main points": "Existing Points",
+            }
+        ]
+
+        mock_yt_instance = self._setup_mocks(
+            mock_llm_client, mock_notion_client, mock_youtube_client, videos_data
+        )
+        mock_yt_instance.get_video_transcript.return_value = "Sample transcript"
+        mock_llm_client.return_value.summarize.return_value = "Generated Summary"
+
+        service = YouTubeSummarizerService(token="test-token")
+        videos = service.get_videos("db-123")
+
+        assert videos[0].updated is True
+        assert videos[0].summary == "Generated Summary"
+        mock_yt_instance.get_video_transcript.assert_called()
+        mock_llm_client.return_value.summarize.assert_called_once()
+        # Main points should not be re-generated since they exist
+        mock_llm_client.return_value.get_main_points.assert_not_called()
+
+    @patch("yt_summarizer.service.YouTubeClient")
+    @patch("yt_summarizer.service.NotionClient")
+    @patch("yt_summarizer.service.LLMClient")
+    def test_updated_flag_true_when_main_points_generated(
+        self, mock_llm_client, mock_notion_client, mock_youtube_client
+    ):
+        """Test that updated flag is True when main points are generated."""
+        videos_data = [
+            {
+                "ID": "page-1",
+                "URL": "https://www.youtube.com/watch?v=abc123",
+                "Title": "Existing Title",
+                "Summary": "Existing Summary",
+                "Main points": None,  # Missing main points
+            }
+        ]
+
+        mock_yt_instance = self._setup_mocks(
+            mock_llm_client, mock_notion_client, mock_youtube_client, videos_data
+        )
+        mock_yt_instance.get_video_transcript.return_value = "Sample transcript"
+        mock_llm_client.return_value.get_main_points.return_value = (
+            "Generated Main Points"
+        )
+
+        service = YouTubeSummarizerService(token="test-token")
+        videos = service.get_videos("db-123")
+
+        assert videos[0].updated is True
+        assert videos[0].main_points == "Generated Main Points"
+        mock_yt_instance.get_video_transcript.assert_called()
+        mock_llm_client.return_value.get_main_points.assert_called_once()
+        # Summary should not be re-generated since it exists
+        mock_llm_client.return_value.summarize.assert_not_called()
+
+    @patch("yt_summarizer.service.YouTubeClient")
+    @patch("yt_summarizer.service.NotionClient")
+    @patch("yt_summarizer.service.LLMClient")
+    def test_updated_flag_true_when_multiple_fields_missing(
+        self, mock_llm_client, mock_notion_client, mock_youtube_client
+    ):
+        """Test updated flag is True when multiple fields are missing."""
+        videos_data = [
+            {
+                "ID": "page-1",
+                "URL": "https://www.youtube.com/watch?v=abc123",
+                "Title": "",  # Missing title
+                "Summary": None,  # Missing summary
+                "Main points": None,  # Missing main points
+            }
+        ]
+
+        mock_yt_instance = self._setup_mocks(
+            mock_llm_client, mock_notion_client, mock_youtube_client, videos_data
+        )
+        mock_yt_instance.get_video_title.return_value = "Fetched Title"
+        mock_yt_instance.get_video_transcript.return_value = "Sample transcript"
+        mock_llm_client.return_value.summarize.return_value = "Generated Summary"
+        mock_llm_client.return_value.get_main_points.return_value = (
+            "Generated Main Points"
+        )
+
+        service = YouTubeSummarizerService(token="test-token")
+        videos = service.get_videos("db-123")
+
+        assert videos[0].updated is True
+        assert videos[0].title == "Fetched Title"
+        assert videos[0].summary == "Generated Summary"
+        assert videos[0].main_points == "Generated Main Points"
+
+    @patch("yt_summarizer.service.YouTubeClient")
+    @patch("yt_summarizer.service.NotionClient")
+    @patch("yt_summarizer.service.LLMClient")
+    def test_transcript_reuse_when_both_summary_and_main_points_missing(
+        self, mock_llm_client, mock_notion_client, mock_youtube_client
+    ):
+        """Test that transcript is fetched once and reused for both summary and main_points."""
+        videos_data = [
+            {
+                "ID": "page-1",
+                "URL": "https://www.youtube.com/watch?v=abc123",
+                "Title": "Existing Title",
+                "Summary": None,  # Missing summary
+                "Main points": None,  # Missing main points
+            }
+        ]
+
+        mock_yt_instance = self._setup_mocks(
+            mock_llm_client, mock_notion_client, mock_youtube_client, videos_data
+        )
+        mock_yt_instance.get_video_transcript.return_value = "Sample transcript"
+        mock_llm_client.return_value.summarize.return_value = "Generated Summary"
+        mock_llm_client.return_value.get_main_points.return_value = (
+            "Generated Main Points"
+        )
+
+        service = YouTubeSummarizerService(token="test-token")
+        videos = service.get_videos("db-123")
+
+        assert videos[0].updated is True
+        # Transcript should be fetched only once, not twice
+        assert mock_yt_instance.get_video_transcript.call_count == 1
+        # Both LLM methods should be called with same transcript
+        mock_llm_client.return_value.summarize.assert_called_once_with(
+            "Sample transcript"
+        )
+        mock_llm_client.return_value.get_main_points.assert_called_once_with(
+            "Sample transcript"
+        )

@@ -124,7 +124,8 @@ def cli(
     logger.info("Initialized YouTube summarizer service")
 
     for video in service.get_videos(notion_db_id):
-        logger.debug(f"Processing video: {video}")
-        service.update_video(notion_db_id, video)
+        if video.updated:
+            logger.debug(f"Processing video: {video}")
+            service.update_video(notion_db_id, video)
 
     logger.info("YouTube summarizer completed successfully")

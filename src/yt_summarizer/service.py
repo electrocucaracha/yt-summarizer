@@ -107,6 +107,7 @@ class YouTubeSummarizerService:
                 if not video.title:
                     logger.debug(f"Fetching title for video {i}")
                     video.title = yt_client.get_video_title()
+                    video.updated = True
 
             # Generate summary if not already present
             transcript = None
@@ -114,6 +115,7 @@ class YouTubeSummarizerService:
                 logger.info(f"Generating summary for video {i}")
                 transcript = yt_client.get_video_transcript()
                 video.summary = self.llm_client.summarize(transcript)
+                video.updated = True
 
             # Extract main points if not already present
             if not video.main_points:
@@ -122,6 +124,7 @@ class YouTubeSummarizerService:
                 if transcript is None:
                     transcript = yt_client.get_video_transcript()
                 video.main_points = self.llm_client.get_main_points(transcript)
+                video.updated = True
 
             videos.append(video)
             logger.debug(f"Completed processing video {i}")

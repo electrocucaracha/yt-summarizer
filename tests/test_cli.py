@@ -141,14 +141,17 @@ class TestCLI:
     @patch("yt_summarizer.YouTubeSummarizerService")
     @patch("builtins.open", new_callable=mock_open, read_data="test-token")
     def test_cli_with_videos_processing(self, mock_file, mock_service_class):
-        """Test CLI successfully processes videos."""
+        """Test CLI successfully processes and updates only changed videos."""
         mock_service_instance = Mock()
         mock_video1 = Mock()
         mock_video1.id = "video-1"
         mock_video1.title = "Video 1"
+        mock_video1.updated = True
+
         mock_video2 = Mock()
         mock_video2.id = "video-2"
         mock_video2.title = "Video 2"
+        mock_video2.updated = True
 
         mock_service_instance.get_videos.return_value = [mock_video1, mock_video2]
         mock_service_class.return_value = mock_service_instance
@@ -158,6 +161,7 @@ class TestCLI:
 
         assert result.exit_code == 0
         mock_service_instance.get_videos.assert_called_once_with("db-123")
+        # Only videos with updated=True should trigger update_video calls
         mock_service_instance.update_video.assert_any_call("db-123", mock_video1)
         mock_service_instance.update_video.assert_any_call("db-123", mock_video2)
 
@@ -327,3 +331,99 @@ class TestCLI:
         )
 
         assert result.exit_code == 0
+
+    @patch("yt_summarizer.YouTubeSummarizerService")
+    @patch("builtins.open", new_callable=mock_open, read_data="test-token")
+    def test_cli_skip_update_when_not_updated(self, mock_file, mock_service_class):
+        """Test that update_video is not called when video.updated is False."""
+        mock_service_instance = Mock()
+
+        # Create videos with updated flag
+        mock_video1 = Mock()
+        mock_video1.id = "video-1"
+        mock_video1.title = "Video 1"
+        mock_video1.updated = False  # Not updated
+
+        mock_video2 = Mock()
+        mock_video2.id = "video-2"
+        mock_video2.title = "Video 2"
+        mock_video2.updated = True  # Updated
+
+        mock_service_instance.get_videos.return_value = [mock_video1, mock_video2]
+        mock_service_class.return_value = mock_service_instance
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ["--notion-db-id", "db-123"])
+
+        assert result.exit_code == 0
+        # Should only update the video where updated=True
+        mock_service_instance.update_video.assert_called_once_with(
+            "db-123", mock_video2
+        )
+
+    @patch("yt_summarizer.YouTubeSummarizerService")
+    @patch("builtins.open", new_callable=mock_open, read_data="test-token")
+    def test_cli_only_update_changed_videos(self, mock_file, mock_service_class):
+        """Test that only videos with updated=True trigger database updates."""
+        mock_service_instance = Mock()
+
+        # Create multiple videos with mixed updated flags
+        mock_video1 = Mock()
+        mock_video1.id = "video-1"
+        mock_video1.updated = True
+
+        mock_video2 = Mock()
+        mock_video2.id = "video-2"
+        mock_video2.updated = False
+
+        mock_video3 = Mock()
+        mock_video3.id = "video-3"
+        mock_video3.updated = True
+
+        mock_video4 = Mock()
+        mock_video4.id = "video-4"
+        mock_video4.updated = False
+
+        mock_service_instance.get_videos.return_value = [
+            mock_video1,
+            mock_video2,
+            mock_video3,
+            mock_video4,
+        ]
+        mock_service_class.return_value = mock_service_instance
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ["--notion-db-id", "db-123"])
+
+        assert result.exit_code == 0
+        # Should update only videos 1 and 3
+        assert mock_service_instance.update_video.call_count == 2
+        mock_service_instance.update_video.assert_any_call("db-123", mock_video1)
+        mock_service_instance.update_video.assert_any_call("db-123", mock_video3)
+
+    @patch("yt_summarizer.YouTubeSummarizerService")
+    @patch("builtins.open", new_callable=mock_open, read_data="test-token")
+    def test_cli_no_updates_when_all_videos_unchanged(
+        self, mock_file, mock_service_class
+    ):
+        """Test that update_video is never called when no videos are updated."""
+        mock_service_instance = Mock()
+
+        # All videos have updated=False
+        mock_video1 = Mock()
+        mock_video1.id = "video-1"
+        mock_video1.updated = False
+
+        mock_video2 = Mock()
+        mock_video2.id = "video-2"
+        mock_video2.updated = False
+
+        mock_service_instance.get_videos.return_value = [mock_video1, mock_video2]
+        mock_service_class.return_value = mock_service_instance
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ["--notion-db-id", "db-123"])
+
+        assert result.exit_code == 0
+        # Should not call update_video for any videos
+        mock_service_instance.update_video.assert_not_called()
