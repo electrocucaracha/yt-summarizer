@@ -10,6 +10,7 @@ apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: yt-summarizer-daily
+  namespace: yt-summarizer
 spec:
   schedule: "0 0 * * *" # Runs daily at midnight
   successfulJobsHistoryLimit: 3
@@ -20,10 +21,24 @@ spec:
       template:
         spec:
           restartPolicy: OnFailure
+          serviceAccountName: yt-summarizer
+          automountServiceAccountToken: false
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            fsGroup: 10001
+            seccompProfile:
+              type: RuntimeDefault
           containers:
             - name: yt-summarizer
-              image: ghcr.io/electrocucaracha/yt-summarizer:main
-              imagePullPolicy: IfNotPresent
+              image: ghcr.io/electrocucaracha/yt-summarizer@sha256:5d20c34cc9b40a5d7e4c1c1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b
+              imagePullPolicy: Always
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop:
+                    - ALL
               env:
                 - name: NOTION_DATABASE_ID
                   value: "REPLACE_WITH_DATABASE_ID"
@@ -31,15 +46,19 @@ spec:
                   value: "ollama/llama3.2"
                 - name: LLM_API_BASE
                   value: "http://localhost:11434"
-                - name: NOTION_TOKEN
-                  valueFrom:
-                    secretKeyRef:
-                      name: notion-secret
-                      key: secrets.txt
+              resources:
+                requests:
+                  memory: "256Mi"
+                  cpu: "100m"
+                limits:
+                  memory: "512Mi"
+                  cpu: "500m"
               volumeMounts:
                 - name: notion-secret-volume
                   mountPath: /etc/notion
                   readOnly: true
+                - name: tmp
+                  mountPath: /tmp
           volumes:
             - name: notion-secret-volume
               secret:
@@ -47,3 +66,6 @@ spec:
                 items:
                   - key: secrets.txt
                     path: secrets.txt
+                defaultMode: 0400
+            - name: tmp
+              emptyDir: {}
