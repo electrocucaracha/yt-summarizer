@@ -4,6 +4,12 @@ from unittest.mock import Mock, patch
 
 import pytest
 import requests
+from youtube_transcript_api._errors import (
+    AgeRestricted,
+    NoTranscriptFound,
+    TranscriptsDisabled,
+    VideoUnavailable,
+)
 
 from yt_summarizer.youtube import Client
 
@@ -64,13 +70,63 @@ class TestYouTubeClient:
 
         assert "API Error" in str(exc_info.value)
 
+    @patch("yt_summarizer.youtube.YouTubeTranscriptApi")
+    def test_get_video_transcript_age_restricted(
+        self, mock_transcript_api, youtube_url, video_id
+    ):
+        """Test transcript retrieval when video is age-restricted."""
+        mock_transcript_api.return_value.fetch.side_effect = AgeRestricted(video_id)
+
+        client = Client(url=youtube_url)
+
+        with pytest.raises(AgeRestricted):
+            client.get_video_transcript()
+
+    @patch("yt_summarizer.youtube.YouTubeTranscriptApi")
+    def test_get_video_transcript_no_transcript_found(
+        self, mock_transcript_api, youtube_url, video_id
+    ):
+        """Test transcript retrieval when no transcript is available."""
+        mock_transcript_api.return_value.fetch.side_effect = NoTranscriptFound(
+            video_id, [], []
+        )
+
+        client = Client(url=youtube_url)
+
+        with pytest.raises(NoTranscriptFound):
+            client.get_video_transcript()
+
+    @patch("yt_summarizer.youtube.YouTubeTranscriptApi")
+    def test_get_video_transcript_transcripts_disabled(
+        self, mock_transcript_api, youtube_url, video_id
+    ):
+        """Test transcript retrieval when transcripts are disabled."""
+        mock_transcript_api.return_value.fetch.side_effect = TranscriptsDisabled(
+            video_id
+        )
+
+        client = Client(url=youtube_url)
+
+        with pytest.raises(TranscriptsDisabled):
+            client.get_video_transcript()
+
+    @patch("yt_summarizer.youtube.YouTubeTranscriptApi")
+    def test_get_video_transcript_video_unavailable(
+        self, mock_transcript_api, youtube_url, video_id
+    ):
+        """Test transcript retrieval when video is unavailable."""
+        mock_transcript_api.return_value.fetch.side_effect = VideoUnavailable(video_id)
+
+        client = Client(url=youtube_url)
+
+        with pytest.raises(VideoUnavailable):
+            client.get_video_transcript()
+
     @patch("yt_summarizer.youtube.requests.get")
     def test_get_video_title_success(self, mock_requests_get, youtube_url):
         """Test successful video title extraction."""
         mock_response = Mock()
-        mock_response.text = (
-            '<html><head><meta property="og:title" content="Sample Video Title"></head></html>'
-        )
+        mock_response.text = '<html><head><meta property="og:title" content="Sample Video Title"></head></html>'
         mock_response.raise_for_status = Mock()
         mock_requests_get.return_value = mock_response
 
@@ -142,7 +198,9 @@ class TestYouTubeClient:
                     pass
 
     @patch("yt_summarizer.youtube.YouTubeTranscriptApi")
-    def test_get_video_transcript_empty_snippets(self, mock_transcript_api, youtube_url):
+    def test_get_video_transcript_empty_snippets(
+        self, mock_transcript_api, youtube_url
+    ):
         """Test transcript retrieval when API returns empty snippets."""
         mock_transcript_obj = Mock()
         mock_transcript_obj.snippets = []
@@ -154,13 +212,13 @@ class TestYouTubeClient:
         assert transcript == ""
 
     @patch("yt_summarizer.youtube.requests.get")
-    def test_get_video_title_with_special_characters(self, mock_requests_get, youtube_url):
+    def test_get_video_title_with_special_characters(
+        self, mock_requests_get, youtube_url
+    ):
         """Test title extraction with special characters."""
         special_title = "Video Title with Quotes & Special Chars"
         mock_response = Mock()
-        mock_response.text = (
-            f'<html><head><meta property="og:title" content="{special_title}"></head></html>'
-        )
+        mock_response.text = f'<html><head><meta property="og:title" content="{special_title}"></head></html>'
         mock_response.raise_for_status = Mock()
         mock_requests_get.return_value = mock_response
 

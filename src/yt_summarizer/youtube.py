@@ -26,6 +26,12 @@ from urllib.parse import parse_qs, urlparse
 import requests
 from bs4 import BeautifulSoup
 from youtube_transcript_api import YouTubeTranscriptApi
+from youtube_transcript_api._errors import (
+    AgeRestricted,
+    NoTranscriptFound,
+    TranscriptsDisabled,
+    VideoUnavailable,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +68,11 @@ class Client:
             joined by spaces.
 
         Raises:
-            Exception: If transcript is unavailable or API call fails.
+            AgeRestricted: If video is age-restricted and requires authentication.
+            NoTranscriptFound: If no transcript is available for the video.
+            TranscriptsDisabled: If transcripts are disabled for the video.
+            VideoUnavailable: If the video is unavailable or deleted.
+            Exception: For other API call failures.
         """
         logger.info("Fetching transcript for video ID: %s", self.video_id)
         try:
@@ -75,6 +85,34 @@ class Client:
                 len(transcript.snippets),
             )
             return transcript_text
+        except AgeRestricted as e:
+            logger.warning(
+                "Video %s is age-restricted and requires authentication. "
+                "Cookie-based authentication is currently not supported by the "
+                "youtube-transcript-api library. Video cannot be processed.",
+                self.video_id,
+            )
+            raise
+        except NoTranscriptFound as e:
+            logger.error(
+                "No transcript found for video ID %s. The video may not have "
+                "captions/subtitles available.",
+                self.video_id,
+            )
+            raise
+        except TranscriptsDisabled as e:
+            logger.error(
+                "Transcripts are disabled for video ID %s. The video owner has "
+                "disabled captions/subtitles.",
+                self.video_id,
+            )
+            raise
+        except VideoUnavailable as e:
+            logger.error(
+                "Video %s is unavailable. It may have been deleted or made private.",
+                self.video_id,
+            )
+            raise
         except Exception as e:
             logger.error(
                 "Failed to fetch transcript for video ID %s: %s", self.video_id, e
