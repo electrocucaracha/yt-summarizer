@@ -26,6 +26,8 @@ fmt:
 	yamlfmt -dstar **/*.{yaml,yml}
 	command -v prettier > /dev/null || npm install prettier
 	npx prettier . --write
+	command -v uvx > /dev/null || curl -s "https://i.jpillora.com/uvx!!" | bash
+	uvx tox -e lint
 	@echo "Format complete!"
 
 .PHONY: clean

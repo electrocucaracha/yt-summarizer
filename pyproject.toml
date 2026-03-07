@@ -59,9 +59,15 @@ commands =
 description = Check code style
 deps = 
     ruff
+    black
+    isort
+    pyink
 skip_install = true
 commands = 
-    ruff check src/ tests/
+    ruff check --fix src/ tests/
+    black src/ tests/
+    isort src/ tests/
+    pyink src/ tests/
 """
 
 [tool.isort]
