@@ -200,9 +200,7 @@ class TestCLI:
         assert result.exit_code != 0
 
     @patch("builtins.open", new_callable=mock_open, read_data="test-token")
-    def test_cli_missing_database_id(
-        self, mock_file
-    ):  # pylint: disable=unused-argument
+    def test_cli_missing_database_id(self, mock_file):  # pylint: disable=unused-argument
         """Test CLI handles missing database ID."""
         runner = CliRunner()
         result = runner.invoke(cli, [])
