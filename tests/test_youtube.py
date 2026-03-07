@@ -4,6 +4,12 @@ from unittest.mock import Mock, patch
 
 import pytest
 import requests
+from youtube_transcript_api._errors import (
+    AgeRestricted,
+    NoTranscriptFound,
+    TranscriptsDisabled,
+    VideoUnavailable,
+)
 
 from yt_summarizer.youtube import Client
 
@@ -63,6 +69,58 @@ class TestYouTubeClient:
             client.get_video_transcript()
 
         assert "API Error" in str(exc_info.value)
+
+    @patch("yt_summarizer.youtube.YouTubeTranscriptApi")
+    def test_get_video_transcript_age_restricted(
+        self, mock_transcript_api, youtube_url, video_id
+    ):
+        """Test transcript retrieval when video is age-restricted."""
+        mock_transcript_api.return_value.fetch.side_effect = AgeRestricted(video_id)
+
+        client = Client(url=youtube_url)
+
+        with pytest.raises(AgeRestricted):
+            client.get_video_transcript()
+
+    @patch("yt_summarizer.youtube.YouTubeTranscriptApi")
+    def test_get_video_transcript_no_transcript_found(
+        self, mock_transcript_api, youtube_url, video_id
+    ):
+        """Test transcript retrieval when no transcript is available."""
+        mock_transcript_api.return_value.fetch.side_effect = NoTranscriptFound(
+            video_id, [], []
+        )
+
+        client = Client(url=youtube_url)
+
+        with pytest.raises(NoTranscriptFound):
+            client.get_video_transcript()
+
+    @patch("yt_summarizer.youtube.YouTubeTranscriptApi")
+    def test_get_video_transcript_transcripts_disabled(
+        self, mock_transcript_api, youtube_url, video_id
+    ):
+        """Test transcript retrieval when transcripts are disabled."""
+        mock_transcript_api.return_value.fetch.side_effect = TranscriptsDisabled(
+            video_id
+        )
+
+        client = Client(url=youtube_url)
+
+        with pytest.raises(TranscriptsDisabled):
+            client.get_video_transcript()
+
+    @patch("yt_summarizer.youtube.YouTubeTranscriptApi")
+    def test_get_video_transcript_video_unavailable(
+        self, mock_transcript_api, youtube_url, video_id
+    ):
+        """Test transcript retrieval when video is unavailable."""
+        mock_transcript_api.return_value.fetch.side_effect = VideoUnavailable(video_id)
+
+        client = Client(url=youtube_url)
+
+        with pytest.raises(VideoUnavailable):
+            client.get_video_transcript()
 
     @patch("yt_summarizer.youtube.requests.get")
     def test_get_video_title_success(self, mock_requests_get, youtube_url):
