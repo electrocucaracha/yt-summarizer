@@ -19,7 +19,7 @@ help:
 
 .PHONY: test
 test: clean
-	command -v uvx > /dev/null || curl -s "https://i.jpillora.com/uvx!!" | bash
+	command -v uvx > /dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
 	uvx tox
 	@echo "Tests complete!"
 
@@ -29,6 +29,8 @@ lint: clean
 	-e RUN_LOCAL=true \
 	-e LINTER_RULES_PATH=/ \
 	ghcr.io/super-linter/super-linter
+	command -v uvx > /dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
+	uvx tox -e lint-check
 	@echo "Lint complete!"
 
 .PHONY: fmt
@@ -39,7 +41,7 @@ fmt:
 	yamlfmt -dstar **/*.{yaml,yml}
 	command -v prettier > /dev/null || npm install prettier
 	npx prettier . --write
-	command -v uvx > /dev/null || curl -s "https://i.jpillora.com/uvx!!" | bash
+	command -v uvx > /dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
 	uvx tox -e lint
 	@echo "Format complete!"
 

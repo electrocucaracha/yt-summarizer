@@ -56,6 +56,20 @@ commands =
     pytest --cov=src/yt_summarizer --cov-report=html --cov-report=term-missing tests/
 
 [testenv:lint]
+description = Fix code style
+deps = 
+    ruff
+    black
+    isort
+    pyink
+skip_install = true
+commands =
+    ruff check --fix src/ tests/
+    black src/ tests/
+    isort src/ tests/
+    pyink src/ tests/
+
+[testenv:lint-check]
 description = Check code style
 deps = 
     ruff
@@ -63,11 +77,11 @@ deps =
     isort
     pyink
 skip_install = true
-commands = 
-    ruff check --fix src/ tests/
-    black src/ tests/
-    isort src/ tests/
-    pyink src/ tests/
+commands =
+    ruff check src/ teststo
+    black --check src/ tests/
+    isort --check src/ tests/
+    pyink --check src/ tests/
 """
 
 [tool.isort]
