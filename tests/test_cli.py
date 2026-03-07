@@ -3,6 +3,7 @@
 from unittest.mock import Mock, mock_open, patch
 
 from click.testing import CliRunner
+
 from yt_summarizer import cli
 
 
@@ -200,7 +201,9 @@ class TestCLI:
         assert result.exit_code != 0
 
     @patch("builtins.open", new_callable=mock_open, read_data="test-token")
-    def test_cli_missing_database_id(self, mock_file):  # pylint: disable=unused-argument
+    def test_cli_missing_database_id(
+        self, mock_file
+    ):  # pylint: disable=unused-argument
         """Test CLI handles missing database ID."""
         runner = CliRunner()
         result = runner.invoke(cli, [])
@@ -376,7 +379,9 @@ class TestCLI:
 
         assert result.exit_code == 0
         # Should only update the video where updated=True
-        mock_service_instance.update_video.assert_called_once_with("db-123", mock_video2)
+        mock_service_instance.update_video.assert_called_once_with(
+            "db-123", mock_video2
+        )
 
     @patch("yt_summarizer.YouTubeSummarizerService")
     @patch("builtins.open", new_callable=mock_open, read_data="test-token")

@@ -19,7 +19,9 @@ class TestNotionClient:  # pylint: disable=protected-access
         assert client.client is not None
 
     @patch("yt_summarizer.notion.NotionClient")
-    def test_user_to_string(self, mock_notion_client):  # pylint: disable=unused-argument
+    def test_user_to_string(
+        self, mock_notion_client
+    ):  # pylint: disable=unused-argument
         """Test conversion of Notion user object to string."""
         client = Client(token="test-token")
 
@@ -29,7 +31,9 @@ class TestNotionClient:  # pylint: disable=protected-access
         assert result == "user-123: John Doe"
 
     @patch("yt_summarizer.notion.NotionClient")
-    def test_user_to_string_missing_name(self, mock_notion_client):  # pylint: disable=unused-argument
+    def test_user_to_string_missing_name(
+        self, mock_notion_client
+    ):  # pylint: disable=unused-argument
         """Test conversion of user with missing name."""
         client = Client(token="test-token")
 
@@ -39,7 +43,9 @@ class TestNotionClient:  # pylint: disable=protected-access
         assert result == "user-123: Unknown Name"
 
     @patch("yt_summarizer.notion.NotionClient")
-    def test_user_to_string_missing_id(self, mock_notion_client):  # pylint: disable=unused-argument
+    def test_user_to_string_missing_id(
+        self, mock_notion_client
+    ):  # pylint: disable=unused-argument
         """Test conversion of user with missing id."""
         client = Client(token="test-token")
 
@@ -277,7 +283,9 @@ class TestNotionClient:  # pylint: disable=protected-access
         """Test formatting multi_select property for update."""
         client = Client(token="test-token")
 
-        result = client._format_property_for_update("multi_select", "Option1, Option2, Option3")
+        result = client._format_property_for_update(
+            "multi_select", "Option1, Option2, Option3"
+        )
 
         assert result == {
             "multi_select": [
@@ -372,8 +380,12 @@ class TestNotionClient:  # pylint: disable=protected-access
             {"id": "page-2"},
         ]
 
-        mock_notion_client.return_value.search.return_value = {"results": [{"id": "ds-1"}]}
-        mock_notion_client.return_value.data_sources.query.return_value = {"results": mock_pages}
+        mock_notion_client.return_value.search.return_value = {
+            "results": [{"id": "ds-1"}]
+        }
+        mock_notion_client.return_value.data_sources.query.return_value = {
+            "results": mock_pages
+        }
         mock_notion_client.return_value.pages.retrieve.return_value = {
             "properties": {
                 "Title": {"id": "title-id", "type": "title"},
@@ -436,7 +448,9 @@ class TestNotionClient:  # pylint: disable=protected-access
         mock_notion_client.return_value.databases.retrieve.return_value = mock_database
 
         client = Client(token="test-token")
-        result = client.update_page_properties("db-123", "page-456", {"NonExistent": "Value"})
+        result = client.update_page_properties(
+            "db-123", "page-456", {"NonExistent": "Value"}
+        )
 
         assert result is False
 
@@ -472,9 +486,13 @@ class TestNotionClient:  # pylint: disable=protected-access
         }
 
         mock_notion_client.return_value.databases.retrieve.return_value = mock_database
-        mock_notion_client.return_value.pages.update.side_effect = Exception("API Error")
+        mock_notion_client.return_value.pages.update.side_effect = Exception(
+            "API Error"
+        )
 
         client = Client(token="test-token")
-        result = client.update_page_properties("db-123", "page-456", {"Title": "New Title"})
+        result = client.update_page_properties(
+            "db-123", "page-456", {"Title": "New Title"}
+        )
 
         assert result is False

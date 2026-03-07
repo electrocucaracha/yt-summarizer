@@ -2,6 +2,8 @@
 
 from unittest.mock import Mock, patch
 
+import pytest
+
 from yt_summarizer.model import YouTubeVideo
 from yt_summarizer.service import YouTubeSummarizerService
 
@@ -9,11 +11,15 @@ from yt_summarizer.service import YouTubeSummarizerService
 class TestYouTubeSummarizerService:
     """Test cases for YouTubeSummarizerService class."""
 
-    def _setup_mocks(self, mock_llm_client, mock_notion_client, mock_youtube_client, videos_data):
+    def _setup_mocks(
+        self, mock_llm_client, mock_notion_client, mock_youtube_client, videos_data
+    ):
         """Helper to setup common mocks for tests."""
         mock_notion_instance = Mock()
         mock_notion_client.return_value = mock_notion_instance
-        mock_notion_instance.get_page_properties_from_database.return_value = videos_data
+        mock_notion_instance.get_page_properties_from_database.return_value = (
+            videos_data
+        )
 
         mock_llm_instance = Mock()
         mock_llm_client.return_value = mock_llm_instance
@@ -61,7 +67,9 @@ class TestYouTubeSummarizerService:
     @patch("yt_summarizer.service.YouTubeClient")
     @patch("yt_summarizer.service.NotionClient")
     @patch("yt_summarizer.service.LLMClient")
-    def test_get_videos_success(self, mock_llm_client, mock_notion_client, mock_youtube_client):
+    def test_get_videos_success(
+        self, mock_llm_client, mock_notion_client, mock_youtube_client
+    ):
         """Test successful video retrieval and processing."""
         # Setup mock Notion client
         videos_data = [
@@ -74,7 +82,9 @@ class TestYouTubeSummarizerService:
             }
         ]
 
-        self._setup_mocks(mock_llm_client, mock_notion_client, mock_youtube_client, videos_data)
+        self._setup_mocks(
+            mock_llm_client, mock_notion_client, mock_youtube_client, videos_data
+        )
 
         service = YouTubeSummarizerService(token="test-token")
         videos = service.get_videos("db-123")
@@ -88,7 +98,9 @@ class TestYouTubeSummarizerService:
     @patch("yt_summarizer.service.YouTubeClient")
     @patch("yt_summarizer.service.NotionClient")
     @patch("yt_summarizer.service.LLMClient")
-    def test_get_videos_skip_no_url(self, mock_llm_client, mock_notion_client, mock_youtube_client):
+    def test_get_videos_skip_no_url(
+        self, mock_llm_client, mock_notion_client, mock_youtube_client
+    ):
         """Test that records without URLs are skipped."""
         videos_data = [
             {
@@ -107,7 +119,9 @@ class TestYouTubeSummarizerService:
             },
         ]
 
-        self._setup_mocks(mock_llm_client, mock_notion_client, mock_youtube_client, videos_data)
+        self._setup_mocks(
+            mock_llm_client, mock_notion_client, mock_youtube_client, videos_data
+        )
 
         service = YouTubeSummarizerService(token="test-token")
         videos = service.get_videos("db-123")
@@ -189,7 +203,9 @@ class TestYouTubeSummarizerService:
             }
         ]
 
-        self._setup_mocks(mock_llm_client, mock_notion_client, mock_youtube_client, videos_data)
+        self._setup_mocks(
+            mock_llm_client, mock_notion_client, mock_youtube_client, videos_data
+        )
         mock_llm_client.return_value.summarize.return_value = "Generated summary"
         mock_llm_client.return_value.get_main_points.return_value = "Generated points"
         mock_youtube_client.return_value.get_video_transcript.return_value = (
@@ -200,7 +216,9 @@ class TestYouTubeSummarizerService:
         videos = service.get_videos("db-123")
 
         assert videos[0].summary == "Generated summary"
-        mock_llm_client.return_value.summarize.assert_called_once_with("Sample transcript text")
+        mock_llm_client.return_value.summarize.assert_called_once_with(
+            "Sample transcript text"
+        )
 
     @patch("yt_summarizer.service.YouTubeClient")
     @patch("yt_summarizer.service.NotionClient")
@@ -219,8 +237,12 @@ class TestYouTubeSummarizerService:
             }
         ]
 
-        self._setup_mocks(mock_llm_client, mock_notion_client, mock_youtube_client, videos_data)
-        mock_llm_client.return_value.get_main_points.return_value = "Generated main points"
+        self._setup_mocks(
+            mock_llm_client, mock_notion_client, mock_youtube_client, videos_data
+        )
+        mock_llm_client.return_value.get_main_points.return_value = (
+            "Generated main points"
+        )
         mock_youtube_client.return_value.get_video_transcript.return_value = (
             "Sample transcript text"
         )
@@ -297,7 +319,9 @@ class TestYouTubeSummarizerService:
             },
         ]
 
-        self._setup_mocks(mock_llm_client, mock_notion_client, mock_youtube_client, videos_data)
+        self._setup_mocks(
+            mock_llm_client, mock_notion_client, mock_youtube_client, videos_data
+        )
 
         service = YouTubeSummarizerService(token="test-token")
         videos = service.get_videos("db-123")
@@ -325,7 +349,9 @@ class TestYouTubeSummarizerService:
             }
         ]
 
-        self._setup_mocks(mock_llm_client, mock_notion_client, mock_youtube_client, videos_data)
+        self._setup_mocks(
+            mock_llm_client, mock_notion_client, mock_youtube_client, videos_data
+        )
 
         service = YouTubeSummarizerService(token="test-token")
         videos = service.get_videos("db-123")
@@ -422,7 +448,9 @@ class TestYouTubeSummarizerService:
             mock_llm_client, mock_notion_client, mock_youtube_client, videos_data
         )
         mock_yt_instance.get_video_transcript.return_value = "Sample transcript"
-        mock_llm_client.return_value.get_main_points.return_value = "Generated Main Points"
+        mock_llm_client.return_value.get_main_points.return_value = (
+            "Generated Main Points"
+        )
 
         service = YouTubeSummarizerService(token="test-token")
         videos = service.get_videos("db-123")
@@ -457,7 +485,9 @@ class TestYouTubeSummarizerService:
         mock_yt_instance.get_video_title.return_value = "Fetched Title"
         mock_yt_instance.get_video_transcript.return_value = "Sample transcript"
         mock_llm_client.return_value.summarize.return_value = "Generated Summary"
-        mock_llm_client.return_value.get_main_points.return_value = "Generated Main Points"
+        mock_llm_client.return_value.get_main_points.return_value = (
+            "Generated Main Points"
+        )
 
         service = YouTubeSummarizerService(token="test-token")
         videos = service.get_videos("db-123")
@@ -489,7 +519,9 @@ class TestYouTubeSummarizerService:
         )
         mock_yt_instance.get_video_transcript.return_value = "Sample transcript"
         mock_llm_client.return_value.summarize.return_value = "Generated Summary"
-        mock_llm_client.return_value.get_main_points.return_value = "Generated Main Points"
+        mock_llm_client.return_value.get_main_points.return_value = (
+            "Generated Main Points"
+        )
 
         service = YouTubeSummarizerService(token="test-token")
         videos = service.get_videos("db-123")
@@ -498,5 +530,47 @@ class TestYouTubeSummarizerService:
         # Transcript should be fetched only once, not twice
         assert mock_yt_instance.get_video_transcript.call_count == 1
         # Both LLM methods should be called with same transcript
-        mock_llm_client.return_value.summarize.assert_called_once_with("Sample transcript")
-        mock_llm_client.return_value.get_main_points.assert_called_once_with("Sample transcript")
+        mock_llm_client.return_value.summarize.assert_called_once_with(
+            "Sample transcript"
+        )
+        mock_llm_client.return_value.get_main_points.assert_called_once_with(
+            "Sample transcript"
+        )
+
+
+@pytest.fixture
+def mock_youtube_client(mocker):
+    client = mocker.patch("yt_summarizer.youtube.Client")
+    client.return_value.extract_info.return_value = {
+        "entries": [
+            {"id": "video1", "title": "Video 1"},
+            {"id": "video2", "title": "Video 2"},
+        ]
+    }
+    return client
+
+
+@pytest.fixture
+def mock_notion_client(mocker):
+    return mocker.patch("yt_summarizer.notion.Client")
+
+
+@pytest.fixture
+def mock_llm_client(mocker):
+    client = mocker.patch("yt_summarizer.llm.Client")
+    client.return_value.summarize.return_value = "Summary"
+    client.return_value.extract_key_points.return_value = "Main Points"
+    return client
+
+
+@pytest.fixture
+def mock_yt_dlp(mocker):
+    mock_yt_dlp = mocker.patch("yt_summarizer.service.yt_dlp.YoutubeDL", autospec=True)
+    mock_ydl_instance = mock_yt_dlp.return_value
+    mock_ydl_instance.extract_info.return_value = {
+        "entries": [
+            {"id": "abc123", "title": "Video 1"},
+            {"id": "def456", "title": "Video 2"},
+        ]
+    }
+    return mock_yt_dlp

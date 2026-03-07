@@ -22,6 +22,8 @@ complete pipeline for summarizing videos.
 
 import logging
 
+import yt_dlp
+
 from .llm import Client as LLMClient
 from .model import YouTubeVideo
 from .notion import Client as NotionClient
@@ -98,39 +100,54 @@ class YouTubeSummarizerService:
                 summary=prop.get("Summary", None),
                 main_points=prop.get("Main points", None),
             )
-            logger.debug("Processing video %d: %s", i, video.url)
-            yt_client = YouTubeClient(video.url)
-
-            # Fetch missing metadata from YouTube
-            if not video.title:
-                logger.debug("Fetching missing metadata for video %d", i)
-                if not video.title:
-                    logger.debug("Fetching title for video %d", i)
-                    video.title = yt_client.get_video_title()
-                    video.updated = True
-
-            # Generate summary if not already present
-            transcript = None
-            if not video.summary:
-                logger.info("Generating summary for video %d", i)
-                transcript = yt_client.get_video_transcript()
-                video.summary = self.llm_client.summarize(transcript)
-                video.updated = True
-
-            # Extract main points if not already present
-            if not video.main_points:
-                logger.info("Extracting main points for video %d", i)
-                # Fetch transcript if we didn't already fetch it for summary
-                if transcript is None:
-                    transcript = yt_client.get_video_transcript()
-                video.main_points = self.llm_client.get_main_points(transcript)
-                video.updated = True
-
+            self._process_video(video)
             videos.append(video)
-            logger.debug("Completed processing video %d", i)
 
         logger.info("Successfully processed %d videos", len(videos))
         return videos
+
+    def _process_video(self, video: YouTubeVideo):
+        """Process an individual video to populate missing metadata and summaries.
+
+        For a given YouTubeVideo object, this method checks for missing title,
+        transcript, summary, and main points. It retrieves any missing information
+        from YouTube and generates summaries and key points using the LLM as needed.
+
+        Args:
+            video: A YouTubeVideo object with potentially incomplete data.
+        Returns:
+            The updated YouTubeVideo object with all fields populated.
+        """
+        logger.debug("Processing video: %s", video.url)
+        yt_client = YouTubeClient(video.url)
+
+        # Fetch missing metadata from YouTube
+        if not video.title:
+            logger.debug("Fetching missing metadata for video: %s", video.url)
+            if not video.title:
+                logger.debug("Fetching title for video: %s", video.url)
+                video.title = yt_client.get_video_title()
+                video.updated = True
+
+        # Generate summary if not already present
+        transcript = None
+        if not video.summary:
+            logger.info("Generating summary for video: %s", video.url)
+            transcript = yt_client.get_video_transcript()
+            video.summary = self.llm_client.summarize(transcript)
+            video.updated = True
+
+        # Extract main points if not already present
+        if not video.main_points:
+            logger.info("Extracting main points for video: %s", video.url)
+            # Fetch transcript if we didn't already fetch it for summary
+            if transcript is None:
+                transcript = yt_client.get_video_transcript()
+            video.main_points = self.llm_client.get_main_points(transcript)
+            video.updated = True
+
+        logger.debug("Completed processing video: %s", video.url)
+        return video
 
     def update_video(self, notion_db_id: str, video: YouTubeVideo):
         """Update a video record in the Notion database with processed content.
@@ -150,3 +167,60 @@ class YouTubeSummarizerService:
         }
         self.notion_client.update_page_properties(notion_db_id, video.id, properties)
         logger.debug("Successfully updated video record: %s", video.id)
+
+    def create_video(self, notion_db_id: str, video: YouTubeVideo):
+        """Create a new video record in the Notion database.
+
+        Persists a video's metadata into the Notion database as a new page.
+
+        Args:
+            notion_db_id: The Notion database ID where the record will be created.
+            video: The YouTubeVideo object containing data to persist.
+        """
+        logger.debug("Creating video record in database for video: %s", video.title)
+
+        properties = {
+            "Title": video.title,
+            "URL": video.url,
+            "Summary": video.summary,
+            "Main Points": video.main_points,
+        }
+
+        page_id = self.notion_client.create_page(notion_db_id, properties)
+
+        if page_id:
+            video.id = page_id
+            logger.debug("Successfully created video record: %s", page_id)
+        else:
+            logger.error("Failed to create video record for video: %s", video.title)
+
+    def process_playlist(self, playlist_url: str, notion_db_id: str):
+        """Process a YouTube playlist and update the Notion database with video summaries."""
+        logger.info("Processing playlist: %s", playlist_url)
+
+        ydl_opts = {
+            "extract_flat": True,
+            "quiet": True,
+        }
+
+        logger.debug("Initializing YoutubeDL with options: %s", ydl_opts)
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            logger.debug("Calling extract_info with playlist_url: %s", playlist_url)
+            info = ydl.extract_info(playlist_url, download=False)
+            logger.debug("Extracted info: %s", info)
+
+            processed_count = 0
+            for entry in info["entries"]:
+                logger.debug("Processing entry: %s", entry)
+                video = YouTubeVideo(
+                    id=entry["id"],
+                    url=f"https://www.youtube.com/watch?v={entry['id']}",
+                    title=entry.get("title"),
+                )
+                video.updated = True
+                self._process_video(video)
+                self.create_video(notion_db_id, video)
+                processed_count += 1
+
+            logger.info("Completed processing playlist: %s", playlist_url)
+            logger.info("Total videos processed: %d", processed_count)

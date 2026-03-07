@@ -73,8 +73,14 @@ def _read_token_from_file(file_path: str) -> str:
     ),
     help="Set the logging level.",
 )
+@click.option("--playlist-url", required=False, help="YouTube playlist URL to process")
 def cli(
-    notion_db_id: str, notion_token_file: str, model: str, api_base: str, log_level: str
+    notion_db_id: str,
+    notion_token_file: str,
+    model: str,
+    api_base: str,
+    log_level: str,
+    playlist_url: str,
 ):
     """Main CLI entry point for the YouTube summarizer.
 
@@ -124,9 +130,13 @@ def cli(
     service = YouTubeSummarizerService(token=token, model=model, api_base=api_base)
     logger.info("Initialized YouTube summarizer service")
 
-    for video in service.get_videos(notion_db_id):
-        if video.updated:
-            logger.debug("Processing video: %s", video)
-            service.update_video(notion_db_id, video)
+    if playlist_url:
+        logger.info("Processing YouTube playlist URL: %s", playlist_url)
+        service.process_playlist(playlist_url, notion_db_id)
+    else:
+        for video in service.get_videos(notion_db_id):
+            if video.updated:
+                logger.debug("Processing video: %s", video)
+                service.update_video(notion_db_id, video)
 
     logger.info("YouTube summarizer completed successfully")
