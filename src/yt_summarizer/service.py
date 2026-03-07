@@ -195,7 +195,20 @@ class YouTubeSummarizerService:
             logger.error("Failed to create video record for video: %s", video.title)
 
     def process_playlist(self, playlist_url: str, notion_db_id: str):
-        """Process a YouTube playlist and update the Notion database with video summaries."""
+        """Process a YouTube playlist and update the Notion database with video summaries.
+
+        Args:
+            playlist_url: The URL of the YouTube playlist to process.
+            notion_db_id: The Notion database ID where video records will be updated.
+
+        Returns:
+            None
+
+        Processing flow:
+            1. Extract video metadata from the playlist.
+            2. Process each video to generate summaries and main points.
+            3. Update the Notion database with the processed video data.
+        """
         logger.info("Processing playlist: %s", playlist_url)
 
         ydl_opts = {
