@@ -56,7 +56,7 @@ All contributions must include tests that cover the new functionality.
 Execute all tests:
 
 ```bash { name=contributing.test }
-uvx tox
+make test
 ```
 
 ### Test Requirements

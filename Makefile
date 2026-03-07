@@ -9,13 +9,26 @@
 
 DOCKER_CMD ?= $(shell which docker 2> /dev/null || which podman 2> /dev/null || echo docker)
 
+help:
+	@echo "Available targets:"
+	@echo "  test  - Run tests using tox"
+	@echo "  lint  - Run linters using super-linter and tox"
+	@echo "  fmt   - Format code using shfmt, yamlfmt, prettier, and tox lint"
+	@echo "  clean - Remove build artifacts and caches"
+	@echo "  help  - Show this help message"
+
+.PHONY: test
+test: clean
+	command -v uvx > /dev/null || curl -s "https://i.jpillora.com/uvx!!" | bash
+	uvx tox
+	@echo "Tests complete!"
+
 .PHONY: lint
 lint: clean
 	sudo -E $(DOCKER_CMD) run --rm -v $$(pwd):/tmp/lint \
 	-e RUN_LOCAL=true \
 	-e LINTER_RULES_PATH=/ \
 	ghcr.io/super-linter/super-linter
-	uvx tox -e lint
 	@echo "Lint complete!"
 
 .PHONY: fmt
