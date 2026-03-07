@@ -19,7 +19,9 @@ class TestNotionClient:  # pylint: disable=protected-access
         assert client.client is not None
 
     @patch("yt_summarizer.notion.NotionClient")
-    def test_user_to_string(self, mock_notion_client):  # pylint: disable=unused-argument
+    def test_user_to_string(
+        self, mock_notion_client
+    ):  # pylint: disable=unused-argument
         """Test conversion of Notion user object to string."""
         client = Client(token="test-token")
 
@@ -29,7 +31,9 @@ class TestNotionClient:  # pylint: disable=protected-access
         assert result == "user-123: John Doe"
 
     @patch("yt_summarizer.notion.NotionClient")
-    def test_user_to_string_missing_name(self, mock_notion_client):  # pylint: disable=unused-argument
+    def test_user_to_string_missing_name(
+        self, mock_notion_client
+    ):  # pylint: disable=unused-argument
         """Test conversion of user with missing name."""
         client = Client(token="test-token")
 
@@ -39,7 +43,9 @@ class TestNotionClient:  # pylint: disable=protected-access
         assert result == "user-123: Unknown Name"
 
     @patch("yt_summarizer.notion.NotionClient")
-    def test_user_to_string_missing_id(self, mock_notion_client):  # pylint: disable=unused-argument
+    def test_user_to_string_missing_id(
+        self, mock_notion_client
+    ):  # pylint: disable=unused-argument
         """Test conversion of user with missing id."""
         client = Client(token="test-token")
 
