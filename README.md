@@ -24,6 +24,7 @@ A Python automation tool that retrieves YouTube videos from a Notion database, e
 - **Flexible Configuration**: Supports local models via Ollama and cloud-based services through LiteLLM
 - **Database Synchronization**: Persists analysis results back to Notion for team collaboration
 - **Detailed Logging**: Monitors and troubleshoots the processing pipeline
+- **Error Handling**: Gracefully handles unavailable or restricted videos with detailed error messages
 
 ## Use Cases
 
@@ -32,6 +33,12 @@ A Python automation tool that retrieves YouTube videos from a Notion database, e
 - **Team Collaboration**: Store video insights in Notion for discussion
 - **Efficient Reviews**: Extract key points without watching entire videos
 - **Documentation**: Create structured knowledge bases from video analysis
+
+## Limitations
+
+- **Age-Restricted Videos**: Cannot process age-restricted YouTube videos as cookie-based authentication is not currently supported by the youtube-transcript-api library
+- **Videos Without Transcripts**: Can only process videos that have captions/subtitles enabled
+- **Private/Deleted Videos**: Cannot access private, unlisted (without direct link), or deleted videos
 
 ## Workflow
 
