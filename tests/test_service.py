@@ -2,6 +2,8 @@
 
 from unittest.mock import Mock, patch
 
+import pytest
+
 from yt_summarizer.model import YouTubeVideo
 from yt_summarizer.service import YouTubeSummarizerService
 

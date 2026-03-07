@@ -469,3 +469,89 @@ class Client:
         except Exception as e:
             logger.error("Error updating page: %s", e)
             return False
+
+    def create_page(
+        self, database_id: str, properties: Dict[str, str]
+    ) -> Optional[str]:
+        """Create a new page (row) in a Notion database.
+
+        Converts string property values into the correct Notion API format
+        and inserts a new page into the specified database.
+
+        Args:
+            database_id: The ID of the database where the page will be created.
+            properties: Dictionary mapping property names to string values.
+
+        Returns:
+            The created page ID if successful, None otherwise.
+        """
+        try:
+            database = self.client.databases.retrieve(database_id=database_id)
+            data_sources = database.get("data_sources", [])
+
+            if not data_sources:
+                logger.error("No data sources found in database")
+                return None
+
+            data_source_id = data_sources[0]["id"]
+
+            # Retrieve schema from data source
+            data_source = self.client.data_sources.retrieve(
+                data_source_id=data_source_id
+            )
+            db_properties = data_source.get("properties", {})
+
+        except Exception as e:
+            logger.error("Failed retrieving database schema: %s", e)
+            return None
+
+        # Debug: log database response
+        logger.debug(
+            "Database response keys: %s",
+            list(database.keys()) if isinstance(database, dict) else "not a dict",
+        )
+        logger.debug("Available properties in database: %s", list(db_properties.keys()))
+
+        if not db_properties:
+            logger.error("Database schema is empty or unavailable")
+            return None
+
+        try:  # pylint: disable=broad-exception-caught
+            # Case-insensitive property name mapping
+            prop_name_map = {name.lower(): name for name in db_properties.keys()}
+
+            formatted_properties: Dict[str, Any] = {}
+
+            for prop_name, prop_value in properties.items():
+                actual_prop_name = prop_name_map.get(prop_name.lower())
+
+                if not actual_prop_name:
+                    logger.warning(
+                        "Property '%s' not found in database schema", prop_name
+                    )
+                    continue
+
+                prop_type = db_properties[actual_prop_name].get("type")
+                formatted = self._format_property_for_update(prop_type, prop_value)
+
+                if formatted:
+                    formatted_properties[actual_prop_name] = formatted
+
+            if not formatted_properties:
+                logger.warning("No valid properties provided for page creation")
+                return None
+
+            # Create the page
+            response = self.client.pages.create(
+                parent={"database_id": database_id},
+                properties=formatted_properties,
+            )
+
+            page_id = response.get("id")
+            logger.debug("Created page with ID %s", page_id)
+
+            return page_id
+
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.error("Error creating page: %s", e)
+            return None

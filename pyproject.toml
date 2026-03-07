@@ -8,6 +8,7 @@ dependencies = [
     "youtube-transcript-api",
     "beautifulsoup4",
     "litellm",
+    "yt-dlp",
 ]
 
 [project.optional-dependencies]
