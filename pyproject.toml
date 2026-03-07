@@ -62,3 +62,7 @@ skip_install = true
 commands = 
     ruff check src/ tests/
 """
+
+[tool.isort]
+profile = "black"
+line_length = 88
