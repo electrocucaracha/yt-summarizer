@@ -89,7 +89,9 @@ jobs:
           DELIM="EOF_$(uuidgen)"
           {
             printf "response<<%s\n" "$DELIM"
-            cat "$RESPONSE_FILE"
+            if [ -n "$RESPONSE_FILE" ] && [ -f "$RESPONSE_FILE" ]; then
+              cat "$RESPONSE_FILE"
+            fi
             printf "\n%s\n" "$DELIM"
           } >> "$GITHUB_OUTPUT"
         # jscpd:ignore-end
