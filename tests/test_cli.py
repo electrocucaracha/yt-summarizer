@@ -3,7 +3,6 @@
 from unittest.mock import Mock, mock_open, patch
 
 from click.testing import CliRunner
-
 from yt_summarizer import cli
 
 
