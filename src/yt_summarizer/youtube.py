@@ -85,7 +85,7 @@ class Client:
                 len(transcript.snippets),
             )
             return transcript_text
-        except AgeRestricted as e:
+        except AgeRestricted:
             logger.warning(
                 "Video %s is age-restricted and requires authentication. "
                 "Cookie-based authentication is currently not supported by the "
@@ -93,21 +93,21 @@ class Client:
                 self.video_id,
             )
             raise
-        except NoTranscriptFound as e:
+        except NoTranscriptFound:
             logger.error(
                 "No transcript found for video ID %s. The video may not have "
                 "captions/subtitles available.",
                 self.video_id,
             )
             raise
-        except TranscriptsDisabled as e:
+        except TranscriptsDisabled:
             logger.error(
                 "Transcripts are disabled for video ID %s. The video owner has "
                 "disabled captions/subtitles.",
                 self.video_id,
             )
             raise
-        except VideoUnavailable as e:
+        except VideoUnavailable:
             logger.error(
                 "Video %s is unavailable. It may have been deleted or made private.",
                 self.video_id,
