@@ -1,4 +1,3 @@
-#checkov:skip=CKV_DOCKER_2:Ensure that HEALTHCHECK instructions have been added to container images
 # hadolint ignore=DL3018
 FROM python:3.12-alpine AS builder
 
@@ -27,10 +26,10 @@ WORKDIR /app
 
 USER appuser
 
-# The path variable references a secret mount, not the secret itself
-ENV NOTION_TOKEN_FILE='/etc/notion/secrets.txt'
 ENV NOTION_DATABASE_ID=''
 ENV LLM_MODEL='ollama/llama3.2'
 ENV LLM_API_BASE='http://localhost:11434'
+
+HEALTHCHECK NONE
 
 ENTRYPOINT ["/app/yt-summarizer"]
