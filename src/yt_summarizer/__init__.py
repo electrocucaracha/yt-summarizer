@@ -74,6 +74,18 @@ def _read_token_from_file(file_path: str) -> str:
     help="Set the logging level.",
 )
 @click.option("--playlist-url", required=False, help="YouTube playlist URL to process")
+@click.option(
+    "--proxy-username",
+    required=False,
+    envvar="PROXY_USERNAME",
+    help="Username for proxy authentication",
+)
+@click.option(
+    "--proxy-password",
+    required=False,
+    envvar="PROXY_PASSWORD",
+    help="Password for proxy authentication",
+)
 def cli(
     notion_db_id: str,
     notion_token_file: str,
@@ -81,6 +93,8 @@ def cli(
     api_base: str,
     log_level: str,
     playlist_url: str,
+    proxy_username: str,
+    proxy_password: str,
 ):
     """Main CLI entry point for the YouTube summarizer.
 
@@ -123,20 +137,35 @@ def cli(
         else:
             token = _read_token_from_file(notion_token_file)
             logger.debug("Loaded Notion token from file: %s", notion_token_file)
-    except (FileNotFoundError, ValueError) as e:
-        logger.error(str(e))
-        raise
 
-    service = YouTubeSummarizerService(token=token, model=model, api_base=api_base)
-    logger.info("Initialized YouTube summarizer service")
+        # Initialize the summarizer service
+        service = YouTubeSummarizerService(
+            token=token,
+            model=model,
+            api_base=api_base,
+            proxy_username=proxy_username,
+            proxy_password=proxy_password,
+        )
 
-    if playlist_url:
-        logger.info("Processing YouTube playlist URL: %s", playlist_url)
-        service.process_playlist(playlist_url, notion_db_id)
-    else:
-        for video in service.get_videos(notion_db_id):
-            if video.updated:
-                logger.debug("Processing video: %s", video)
-                service.update_video(notion_db_id, video)
+        videos = []
 
-    logger.info("YouTube summarizer completed successfully")
+        # Process the playlist if provided
+        if playlist_url:
+            logger.info("Processing playlist: %s", playlist_url)
+            videos = service.get_videos_from_playlist(playlist_url)
+        else:
+            logger.info(
+                "No playlist URL provided, fetching videos from Notion database"
+            )
+            videos = service.get_videos_from_notion_db(notion_db_id)
+
+        for video in videos:
+            service.process_video(video)
+            service.upsert_video(notion_db_id, video)
+    except Exception as e:
+        logger.error("An unexpected error occurred: %s", str(e))
+        logger.debug("Exception details:", exc_info=True)
+        click.echo("Application encountered an error and will exit.", err=True)
+        exit(1)
+    finally:
+        logger.info("Application terminated.")

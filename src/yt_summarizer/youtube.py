@@ -32,6 +32,7 @@ from youtube_transcript_api._errors import (
     TranscriptsDisabled,
     VideoUnavailable,
 )
+from youtube_transcript_api.proxies import WebshareProxyConfig
 
 logger = logging.getLogger(__name__)
 
@@ -43,21 +44,26 @@ class Client:
     from YouTube videos by parsing the video URL and using official APIs.
     """
 
-    def __init__(self, url: str):
+    def __init__(self, proxy_username: str = None, proxy_password: str = None):
         """Initialize YouTube client with a video URL.
 
         Args:
             url: Full YouTube video URL (e.g., https://www.youtube.com/watch?v=VIDEO_ID)
+            proxy_username: Optional proxy username for YouTube client.
+            proxy_password: Optional proxy password for YouTube client.
 
         Raises:
             KeyError: If the URL does not contain a valid 'v' query parameter.
         """
-        self.url = url
-        query = urlparse(url).query
-        self.video_id = parse_qs(query)["v"][0]
-        logger.debug("Initialized YouTube client for video ID: %s", self.video_id)
+        self.ytt_api = YouTubeTranscriptApi()
+        if proxy_username and proxy_password:
+            logger.debug("Using proxy authentication for transcript retrieval")
+            self.proxy_config = WebshareProxyConfig(
+                proxy_username=proxy_username, proxy_password=proxy_password
+            )
+            self.ytt_api = YouTubeTranscriptApi(proxy_config=self.proxy_config)
 
-    def get_video_transcript(self) -> str:
+    def get_video_transcript(self, url: str) -> str:
         """Retrieve the complete transcript of the YouTube video.
 
         Fetches the transcript from YouTube's transcript API and joins all
@@ -74,9 +80,14 @@ class Client:
             VideoUnavailable: If the video is unavailable or deleted.
             Exception: For other API call failures.
         """
-        logger.info("Fetching transcript for video ID: %s", self.video_id)
+
+        query = urlparse(url).query
+        video_id = parse_qs(query)["v"][0]
+
+        logger.info("Fetching transcript for video ID: %s", video_id)
+
         try:
-            transcript = YouTubeTranscriptApi().fetch(self.video_id)
+            transcript = self.ytt_api.fetch(video_id)
             transcript_text = " ".join(
                 [snippet.text for snippet in transcript.snippets]
             )
@@ -90,36 +101,34 @@ class Client:
                 "Video %s is age-restricted and requires authentication. "
                 "Cookie-based authentication is currently not supported by the "
                 "youtube-transcript-api library. Video cannot be processed.",
-                self.video_id,
+                video_id,
             )
             raise
         except NoTranscriptFound:
             logger.error(
                 "No transcript found for video ID %s. The video may not have "
                 "captions/subtitles available.",
-                self.video_id,
+                video_id,
             )
             raise
         except TranscriptsDisabled:
             logger.error(
                 "Transcripts are disabled for video ID %s. The video owner has "
                 "disabled captions/subtitles.",
-                self.video_id,
+                video_id,
             )
             raise
         except VideoUnavailable:
             logger.error(
                 "Video %s is unavailable. It may have been deleted or made private.",
-                self.video_id,
+                video_id,
             )
             raise
         except Exception as e:
-            logger.error(
-                "Failed to fetch transcript for video ID %s: %s", self.video_id, e
-            )
+            logger.error("Failed to fetch transcript for video ID %s: %s", video_id, e)
             raise
 
-    def get_video_title(self) -> str:
+    def get_video_title(self, url: str) -> str:
         """Extract the video title from the YouTube page.
 
         Parses the video page HTML and extracts the title from the Open Graph
@@ -130,7 +139,13 @@ class Client:
         """
         logger.info("Fetching title for video ID: %s", self.video_id)
         try:
-            response = requests.get(self.url)
+            if self.proxy_config:
+                logger.debug("Using proxy configuration for title retrieval")
+                response = requests.get(
+                    url, proxies=self.proxy_config.to_requests_dict()
+                )
+            else:
+                response = requests.get(url)
             response.raise_for_status()
             html_content = response.text
             soup = BeautifulSoup(html_content, "html.parser")
