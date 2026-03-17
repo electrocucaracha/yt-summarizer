@@ -23,6 +23,7 @@ of all components for efficient video summarization.
 
 import copy
 import logging
+from typing import Optional
 
 import httpx
 import yt_dlp
@@ -44,14 +45,14 @@ class YouTubeSummarizerService:
     and key points using an LLM, and persisting results back to Notion.
     """
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         self,
         token: str,
         notion_db_id: str,
         model: str = "ollama/llama3.2",
         api_base: str = "http://localhost:11434",
-        proxy_username: str = None,
-        proxy_password: str = None,
+        proxy_username: Optional[str] = None,
+        proxy_password: Optional[str] = None,
     ):
         """Initialize the summarizer service with database and LLM clients.
 
@@ -233,7 +234,7 @@ class YouTubeSummarizerService:
                         self.notion_db_id,
                         properties=properties,
                     )
-            except Exception as e:
+            except Exception as e:  # pylint: disable=broad-exception-caught
                 logger.error("Failed to update or create video in Notion: %s", e)
         else:
             logger.info("No changes detected for video: %s", video.url)

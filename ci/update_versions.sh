@@ -26,12 +26,12 @@ go_version="$(curl -sL https://golang.org/VERSION?m=text | sed -n 's/go//;s/\..$
 find .github/workflows -type f \( -name '*.yml' -o -name '*.yaml' \) \
     -exec grep -l 'go-version:' {} + \
     -exec env go_version="${go_version}" bash -s {} + <<'EOF'
-	for file; do
-	    sed -i \
-	        "s|^\([[:space:]]*go-version:[[:space:]]*\).*|\
+    for file; do
+        sed -i \
+            "s|^\([[:space:]]*go-version:[[:space:]]*\).*|\
 \1\"^${go_version}\"|" \
-	        "${file}"
-	done
+            "${file}"
+    done
 EOF
 
 if ! command -v uvx >/dev/null; then

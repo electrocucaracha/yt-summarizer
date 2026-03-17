@@ -20,7 +20,9 @@ metadata including transcript, summaries, and extracted key points. This class
 serves as the core data structure for the application.
 """
 
+import hashlib
 import logging
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +43,7 @@ class YouTubeVideo:
     def __init__(
         self,
         url: str,
-        id: str = None,
+        id: Optional[str] = None,
         title: str = "",
         transcript: str = "",
         summary: str = "",
@@ -89,7 +91,5 @@ class YouTubeVideo:
 
     def compute_hash(self):
         """Compute a hash of the video's properties."""
-        import hashlib
-
         data = f"{self.title}{self.url}{self.summary}{self.main_points}"
-        return hashlib.md5(data.encode()).hexdigest()
+        return hashlib.sha256(data.encode()).hexdigest()

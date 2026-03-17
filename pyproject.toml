@@ -80,7 +80,7 @@ deps =
     pyink
 skip_install = true
 commands =
-    ruff check src/ teststo
+    ruff check src/ tests/
     black --check src/ tests/
     isort --check src/ tests/
     pyink --check src/ tests/
@@ -97,3 +97,7 @@ line-length = 88
 quote-style = "double"
 indent-style = "space"
 line-ending = "auto"
+
+[[tool.mypy.overrides]]
+module = "requests.*"
+ignore_missing_imports = true

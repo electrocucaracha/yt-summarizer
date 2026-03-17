@@ -23,6 +23,7 @@ with the results. The CLI serves as the user interface for the summarization pip
 
 import logging
 import os
+import sys
 
 import click
 
@@ -86,7 +87,7 @@ def _read_token_from_file(file_path: str) -> str:
     envvar="PROXY_PASSWORD",
     help="Password for proxy authentication",
 )
-def cli(
+def cli(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     notion_db_id: str,
     notion_token_file: str,
     model: str,
@@ -167,10 +168,10 @@ def cli(
         for url, video in videos.items():
             logger.info("Processing and storing the video: %s", url)
             service.upsert_video(video)
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-exception-caught
         logger.error("An unexpected error occurred: %s", str(e))
         logger.debug("Exception details:", exc_info=True)
         click.echo("Application encountered an error and will exit.", err=True)
-        exit(1)
+        sys.exit(1)
     finally:
         logger.info("Application terminated.")
