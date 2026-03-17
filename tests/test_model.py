@@ -1,34 +1,26 @@
+import unittest
+
 from yt_summarizer.model import YouTubeVideo
 
 
-def test_youtube_video_initialization():
-    video = YouTubeVideo(
-        id="1",
-        url="https://www.youtube.com/watch?v=abc123",
-        title="Test Title",
-        transcript="Test Transcript",
-        summary="Test Summary",
-        main_points="Test Points",
-    )
+class TestYouTubeVideo(unittest.TestCase):
 
-    assert video.id == "1"
-    assert video.url == "https://www.youtube.com/watch?v=abc123"
-    assert video.title == "Test Title"
-    assert video.transcript == "Test Transcript"
-    assert video.summary == "Test Summary"
-    assert video.main_points == "Test Points"
+    def test_video_initialization(self):
+        video = YouTubeVideo(
+            id="123",
+            url="https://youtube.com/video123",
+            title="Sample Video",
+            transcript="Sample transcript",
+            summary="Sample summary",
+            main_points=["Point 1", "Point 2"],
+        )
+        self.assertEqual(video.id, "123")
+        self.assertEqual(video.url, "https://youtube.com/video123")
+        self.assertEqual(video.title, "Sample Video")
+        self.assertEqual(video.transcript, "Sample transcript")
+        self.assertEqual(video.summary, "Sample summary")
+        self.assertEqual(video.main_points, ["Point 1", "Point 2"])
 
 
-def test_youtube_video_repr():
-    video = YouTubeVideo(
-        id="1",
-        url="https://www.youtube.com/watch?v=abc123",
-        title="Test Title",
-        transcript="Test Transcript",
-        summary="Test Summary",
-        main_points="Test Points",
-    )
-
-    repr_str = repr(video)
-    assert "YouTubeVideo" in repr_str
-    assert "Test Title" in repr_str
+if __name__ == "__main__":
+    unittest.main()

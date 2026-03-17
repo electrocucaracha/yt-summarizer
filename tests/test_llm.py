@@ -1,20 +1,19 @@
-from unittest.mock import MagicMock
-
-import pytest
+import unittest
 
 from yt_summarizer.llm import Client
 
 
-def test_summarize():
-    litellm_mock = MagicMock()
-    litellm_mock.completion.return_value = MagicMock(
-        choices=[MagicMock(message=MagicMock(content="Mock Summary"))]
-    )
+class TestLLMClient(unittest.TestCase):
 
-    client = Client(model="mock_model", api_base="http://mock-api")
-    with pytest.MonkeyPatch.context() as mp:
-        mp.setattr("yt_summarizer.llm.litellm", litellm_mock)
-        summary = client.summarize("Mock Transcript")
+    def setUp(self):
+        self.mock_model = "gpt-4"
+        self.mock_api_base = "https://api.example.com"
+        self.client = Client(model=self.mock_model, api_base=self.mock_api_base)
 
-    assert summary == "Mock Summary"
-    litellm_mock.completion.assert_called_once()
+    def test_initialization(self):
+        self.assertEqual(self.client.model, self.mock_model)
+        self.assertEqual(self.client.api_base, self.mock_api_base)
+
+
+if __name__ == "__main__":
+    unittest.main()

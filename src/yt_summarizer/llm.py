@@ -17,6 +17,7 @@
 
 Provides an interface to interact with Large Language Models (LLMs) via LiteLLM
 for summarizing YouTube video transcripts and extracting key points and main ideas.
+This module abstracts the complexity of LLM interactions for seamless integration.
 """
 
 import logging

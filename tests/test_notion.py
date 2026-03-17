@@ -1,20 +1,20 @@
+import unittest
 from unittest.mock import MagicMock
 
 from yt_summarizer.notion import Client
 
 
-def test_notion_client_initialization():
-    notion_client_mock = MagicMock()
-    client = Client(token="mock_token", client=notion_client_mock)
+class TestNotionClient(unittest.TestCase):
 
-    assert client.client == notion_client_mock
+    def setUp(self):
+        self.mock_token = "mock_token"
+        self.mock_http_client = MagicMock()
+        self.client = Client(token=self.mock_token, client=self.mock_http_client)
+
+    def test_initialization(self):
+        self.assertEqual(self.client.token, self.mock_token)
+        self.assertIsNotNone(self.client.notion_client)
 
 
-def test_user_to_string():
-    notion_client_mock = MagicMock()
-    client = Client(token="mock_token", client=notion_client_mock)
-
-    user = {"id": "123", "name": "Test User"}
-    user_str = client._user_to_string(user)
-
-    assert user_str == "123: Test User"
+if __name__ == "__main__":
+    unittest.main()

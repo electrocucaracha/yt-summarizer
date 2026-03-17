@@ -17,14 +17,15 @@
 
 Defines the YouTubeSummarizerService class which coordinates interactions between
 the Notion database, YouTube data extraction, and LLM processing to create a
-complete pipeline for summarizing videos.
+complete pipeline for summarizing videos. This service ensures seamless integration
+of all components for efficient video summarization.
 """
 
+import copy
 import logging
 
 import httpx
 import yt_dlp
-from youtube_transcript_api._errors import IpBlocked, NoTranscriptFound
 from youtube_transcript_api.proxies import WebshareProxyConfig
 
 from .llm import Client as LLMClient
@@ -46,6 +47,7 @@ class YouTubeSummarizerService:
     def __init__(
         self,
         token: str,
+        notion_db_id: str,
         model: str = "ollama/llama3.2",
         api_base: str = "http://localhost:11434",
         proxy_username: str = None,
@@ -55,13 +57,15 @@ class YouTubeSummarizerService:
 
         Args:
             token: Notion API authentication token.
+            notion_db_id: The Notion database ID containing video records.
             model: LLM model identifier (default: ollama/llama3.2).
             api_base: LLM API base URL (default: http://localhost:11434).
         """
         logger.debug("Initializing YouTube summarizer service")
 
+        self.notion_db_id = notion_db_id
         self.youtube_client = YouTubeClient()
-        http_client_proxy = None
+        http_client_proxy = httpx.Client()  # Default client without proxy
         if proxy_username and proxy_password:
             self.proxy_config = WebshareProxyConfig(
                 proxy_username=proxy_username, proxy_password=proxy_password
@@ -76,15 +80,12 @@ class YouTubeSummarizerService:
         self.llm_client = LLMClient(model=model, api_base=api_base)
         logger.debug("Service initialized successfully")
 
-    def get_videos_from_notion_db(self, notion_db_id: str):
+    def get_videos_from_notion_db(self):
         """Retrieve and process all videos from a Notion database.
 
         Fetches all video records from the Notion database, extracts any missing
         metadata and transcripts from YouTube, and generates summaries and key
         points using the LLM if not already present.
-
-        Args:
-            notion_db_id: The Notion database ID containing video records.
 
         Returns:
             A list of YouTubeVideo objects with complete metadata, transcripts,
@@ -99,34 +100,58 @@ class YouTubeSummarizerService:
                - Generate summary via LLM if missing
                - Extract main points via LLM if missing
         """
-        logger.info("Retrieving videos from Notion database: %s", notion_db_id)
-        properties = self.notion_client.get_page_properties_from_database(notion_db_id)
+        logger.info("Retrieving videos from Notion database: %s", self.notion_db_id)
+        properties = self.notion_client.get_page_properties_from_database(
+            self.notion_db_id
+        )
         logger.debug("Retrieved %d records from database", len(properties))
-        videos = []
+        result = []
+        valid_count = 0
+        invalid_count = 0
+
         for i, prop in enumerate(properties, 1):
             # Skip records without YouTube URLs
             if not prop.get("URL"):
                 logger.debug("Skipping record %d: No YouTube URL found", i)
+                invalid_count += 1
                 continue
 
-            # Create video object with existing data from Notion
+            valid_count += 1
+            # Ensure the URL is extracted correctly from rich text
+            url = prop["URL"]
+            if isinstance(url, list) and url:
+                first_item = url[0]
+                if isinstance(first_item, dict) and "text" in first_item:
+                    logger.debug("Extracting URL from rich text object: %s", first_item)
+                    url = first_item["text"].get("content", "")
+                else:
+                    logger.warning("Unexpected structure in URL list: %s", url)
+                    url = ""
+            elif not isinstance(url, str):
+                logger.warning("Unexpected URL type: %s", type(url))
+                url = ""
+            logger.debug("Processing record %d with URL: %s", i, url)
             video = YouTubeVideo(
                 id=prop.get("ID", ""),
-                url=prop["URL"],
+                url=url,
                 title=prop.get("Title", None),
                 transcript=prop.get("Transcript", None),
                 summary=prop.get("Summary", None),
                 main_points=prop.get("Main points", None),
             )
-            videos.append(video)
+            result.append(video)
+            logger.debug("Added video: %s", video)
 
-        logger.info("Successfully processed %d videos", len(videos))
-        return videos
+        logger.info(
+            "Processed %d valid records and skipped %d invalid records",
+            valid_count,
+            invalid_count,
+        )
+        logger.info("Successfully processed %d videos", len(result))
+        logger.debug("Final videos list: %s", result)
+        return result
 
-    def process_video(
-        self,
-        video: YouTubeVideo,
-    ):
+    def _process_video(self, video: YouTubeVideo) -> YouTubeVideo:
         """Process an individual video to populate missing metadata and summaries.
 
         For a given YouTubeVideo object, this method checks for missing title,
@@ -135,157 +160,83 @@ class YouTubeSummarizerService:
 
         Args:
             video: A YouTubeVideo object with potentially incomplete data.
-
         Returns:
             The updated YouTubeVideo object with all fields populated.
         """
         logger.debug("Processing video: %s", video.url)
+        result = copy.deepcopy(
+            video
+        )  # Create a copy to avoid mutating the original object
 
         # Fetch missing metadata from YouTube
-        if not video.title:
-            logger.debug("Fetching title for video: %s", video.url)
-            video.title = self.youtube_client.get_video_title(video.url)
-            logger.debug("Fetched title: %s", video.title)
-            video.updated = True
+        if not result.title:
+            logger.debug("Fetching missing metadata for video: %s", result.url)
+            if not result.title:
+                logger.debug("Fetching title for video: %s", result.url)
+                result.title = self.youtube_client.get_video_title(url=result.url)
 
         # Generate summary if not already present
         transcript = None
-        if not video.summary:
-            logger.info("Generating summary for video: %s", video.url)
-            try:
-                transcript = self.youtube_client.get_video_transcript(video.url)
-                logger.debug("Fetched transcript: %s", transcript[:50])
-                video.summary = self.llm_client.summarize(transcript)
-                logger.debug("Generated summary: %s", video.summary)
-                video.updated = True
-            except NoTranscriptFound as e:
-                logger.error("No transcript found for video %s: %s", video.url, str(e))
-                return
-            except IpBlocked as e:
-                logger.error(
-                    "IP blocked while fetching transcript for video %s: %s",
-                    video.url,
-                    str(e),
-                )
-                return
+        if not result.summary:
+            logger.info("Generating summary for video: %s", result.url)
+            transcript = self.youtube_client.get_video_transcript(url=result.url)
+            result.summary = self.llm_client.summarize(transcript)
 
         # Extract main points if not already present
-        if not video.main_points:
-            logger.info("Extracting main points for video: %s", video.url)
+        if not result.main_points:
+            logger.info("Extracting main points for video: %s", result.url)
             # Fetch transcript if we didn't already fetch it for summary
             if transcript is None:
-                try:
-                    transcript = self.youtube_client.get_video_transcript(video.url)
+                transcript = self.youtube_client.get_video_transcript(url=result.url)
+            result.main_points = self.llm_client.get_main_points(transcript)
+
+        return result
+
+    def upsert_video(self, video: YouTubeVideo):
+        """Upsert a video's metadata in the Notion database.
+
+        Args:
+            video: A YouTubeVideo object with updated metadata.
+        """
+        # Compute the hash before processing
+        original_hash = video.compute_hash()
+
+        # Process the video
+        updated_video = self._process_video(video)
+
+        # Compute the hash after processing
+        updated_hash = updated_video.compute_hash()
+
+        # Check if the video has changed
+        if original_hash != updated_hash:
+            logger.info("Video has changed. Updating Notion database.")
+            # Proceed with upsert logic
+            properties = {
+                "Title": updated_video.title,
+                "URL": updated_video.url,
+                "Summary": updated_video.summary,
+                "Main Points": updated_video.main_points,
+            }
+            try:
+                if updated_video.id:
+                    logger.debug("Updating existing page with ID: %s", updated_video.id)
+                    self.notion_client.update_page_properties(
+                        self.notion_db_id,
+                        updated_video.id,
+                        properties=properties,
+                    )
+                else:
                     logger.debug(
-                        "Fetched transcript for main points: %s", transcript[:50]
+                        "Creating a new page in database: %s", self.notion_db_id
                     )
-                except NoTranscriptFound as e:
-                    logger.error(
-                        "No transcript found for video %s: %s", video.url, str(e)
+                    updated_video.id = self.notion_client.create_page(
+                        self.notion_db_id,
+                        properties=properties,
                     )
-                    return
-                except IpBlocked as e:
-                    logger.error(
-                        "IP blocked while fetching transcript for video %s: %s",
-                        video.url,
-                        str(e),
-                    )
-                    return
-            video.main_points = self.llm_client.get_main_points(transcript)
-            logger.debug("Generated main points: %s", video.main_points)
-            video.updated = True
-
-        logger.debug("Completed processing video: %s", video.url)
-        return video
-
-    def update_video(self, notion_db_id: str, video: YouTubeVideo):
-        """Update a video record in the Notion database with processed content.
-
-        Persists the video's title, summary, and main points back to the Notion
-        database by updating the corresponding page with the generated content.
-
-        Args:
-            notion_db_id: The Notion database ID containing the video record.
-            video: The YouTubeVideo object with updated content to persist.
-        """
-        logger.debug("Updating video record in database: %s", video.id)
-        properties = {
-            "Title": video.title,
-            "Summary": video.summary,
-            "Main Points": video.main_points,
-        }
-        self.notion_client.update_page_properties(notion_db_id, video.id, properties)
-        logger.debug("Successfully updated video record: %s", video.id)
-
-    def upsert_video(self, notion_db_id: str, video: YouTubeVideo):
-        """Upsert a video record in the Notion database.
-
-        This method checks if a video already exists in the Notion database by its URL.
-        If the video exists, it updates the record with the provided data.
-        If the video does not exist, it creates a new record.
-
-        Args:
-            notion_db_id (str): The Notion database ID where the record will be upserted.
-            video (YouTubeVideo): The YouTubeVideo object containing data to persist.
-
-        Returns:
-            None
-        """
-        logger.info("Starting upsert operation for video: %s", video.title)
-
-        # Check if the video already exists in the Notion database
-        existing_video = self.get_video_by_url(notion_db_id, video.url)
-
-        properties = {
-            "Title": video.title,
-            "URL": video.url,
-            "Summary": video.summary,
-            "Main Points": video.main_points,
-        }
-
-        if existing_video:
-            logger.debug("Video exists, updating record: %s", video.url)
-            self.notion_client.update_page_properties(
-                notion_db_id, existing_video.id, properties
-            )
-            logger.info("Successfully updated video record: %s", existing_video.id)
+            except Exception as e:
+                logger.error("Failed to update or create video in Notion: %s", e)
         else:
-            logger.debug("Video does not exist, creating new record: %s", video.url)
-            page_id = self.notion_client.create_page(notion_db_id, properties)
-
-            if page_id:
-                video.id = page_id
-                logger.info("Successfully created video record: %s", page_id)
-            else:
-                logger.error("Failed to create video record for video: %s", video.title)
-
-        logger.info("Upsert operation completed for video: %s", video.title)
-
-    def get_video_by_url(self, notion_db_id: str, video_url: str):
-        """Retrieve a single video from the Notion database by its URL.
-
-        Args:
-            notion_db_id: The Notion database ID containing video records.
-            video_url: The URL of the video to retrieve.
-
-        Returns:
-            A YouTubeVideo object if the video exists in the database, otherwise None.
-        """
-        logger.info("Searching for video in Notion database by URL: %s", video_url)
-        properties = self.notion_client.get_page_properties_from_database(notion_db_id)
-        for prop in properties:
-            if prop.get("URL") == video_url:
-                logger.debug("Video found in database: %s", video_url)
-                return YouTubeVideo(
-                    id=prop.get("ID", ""),
-                    url=prop["URL"],
-                    title=prop.get("Title", None),
-                    transcript=prop.get("Transcript", None),
-                    summary=prop.get("Summary", None),
-                    main_points=prop.get("Main points", None),
-                )
-        logger.debug("Video not found in database: %s", video_url)
-        return None
+            logger.info("No changes detected for video: %s", video.url)
 
     def get_videos_from_playlist(self, playlist_url: str):
         """Extract video metadata from a YouTube playlist URL.
@@ -316,16 +267,14 @@ class YouTubeSummarizerService:
             logger.error("An unexpected error occurred: %s", str(e))
             raise
 
-        videos = []
+        result = []
         for entry in info["entries"]:
-            logger.debug("Processing entry: %s", entry)
+            url = f"https://www.youtube.com/watch?v={entry['id']}"
             video = YouTubeVideo(
-                id=entry["id"],
-                url=f"https://www.youtube.com/watch?v={entry['id']}",
+                url=url,
                 title=entry.get("title"),
             )
 
-            videos.append(video)
-            logger.debug("Created YouTubeVideo object: %s", video)
+            result.append(video)
 
-        return videos
+        return result

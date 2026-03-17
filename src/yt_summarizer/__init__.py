@@ -18,7 +18,7 @@
 This module provides the entry point for the YouTube summarizer CLI application.
 It orchestrates fetching videos from a Notion database, processing them through
 an LLM to generate summaries and extract main points, and updating the database
-with the results.
+with the results. The CLI serves as the user interface for the summarization pipeline.
 """
 
 import logging
@@ -140,6 +140,7 @@ def cli(
 
         # Initialize the summarizer service
         service = YouTubeSummarizerService(
+            notion_db_id=notion_db_id,
             token=token,
             model=model,
             api_base=api_base,
@@ -147,21 +148,25 @@ def cli(
             proxy_password=proxy_password,
         )
 
-        videos = []
+        videos = {}
+        for video in service.get_videos_from_notion_db():
+            videos[video.url] = video
 
         # Process the playlist if provided
         if playlist_url:
             logger.info("Processing playlist: %s", playlist_url)
-            videos = service.get_videos_from_playlist(playlist_url)
-        else:
-            logger.info(
-                "No playlist URL provided, fetching videos from Notion database"
-            )
-            videos = service.get_videos_from_notion_db(notion_db_id)
+            for video in service.get_videos_from_playlist(playlist_url):
+                if video.url in videos:
+                    logger.info(
+                        "Video '%s' already exists in Notion database, skipping",
+                        video.url,
+                    )
+                else:
+                    videos[video.url] = video
 
-        for video in videos:
-            service.process_video(video)
-            service.upsert_video(notion_db_id, video)
+        for url, video in videos.items():
+            logger.info("Processing and storing the video: %s", url)
+            service.upsert_video(video)
     except Exception as e:
         logger.error("An unexpected error occurred: %s", str(e))
         logger.debug("Exception details:", exc_info=True)

@@ -16,8 +16,13 @@
 """Data model for YouTube video information.
 
 Defines the YouTubeVideo class which represents a YouTube video with all its
-metadata including transcript, summaries, and extracted key points.
+metadata including transcript, summaries, and extracted key points. This class
+serves as the core data structure for the application.
 """
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class YouTubeVideo:
@@ -35,8 +40,8 @@ class YouTubeVideo:
     # pylint: disable=redefined-builtin,too-many-arguments,too-many-positional-arguments
     def __init__(
         self,
-        id: str,
         url: str,
+        id: str = None,
         title: str = "",
         transcript: str = "",
         summary: str = "",
@@ -58,7 +63,6 @@ class YouTubeVideo:
         self.transcript = transcript
         self.summary = summary
         self.main_points = main_points
-        self.updated = False
 
     def __repr__(self):
         """Return a detailed representation of the YouTubeVideo object.
@@ -67,9 +71,9 @@ class YouTubeVideo:
         """
         return (
             f"YouTubeVideo(url={self.url}, title={self.title}, "
-            f"transcript_length={len(self.transcript)}, "
-            f"summary_length={len(self.summary)}, "
-            f"main_points_length={len(self.main_points)})"
+            f"transcript_length={len(self.transcript) if self.transcript else 0}, "
+            f"summary_length={len(self.summary) if self.summary else 0}, "
+            f"main_points_length={len(self.main_points) if self.main_points else 0})"
         )
 
     def __str__(self):
@@ -82,3 +86,10 @@ class YouTubeVideo:
             f"Transcript: {self.transcript}\nSummary: {self.summary}\n"
             f"Main Points: {self.main_points}"
         )
+
+    def compute_hash(self):
+        """Compute a hash of the video's properties."""
+        import hashlib
+
+        data = f"{self.title}{self.url}{self.summary}{self.main_points}"
+        return hashlib.md5(data.encode()).hexdigest()

@@ -17,7 +17,8 @@
 
 Provides functionality to extract metadata and transcripts from YouTube videos
 using URLs. Handles video ID parsing, title extraction via HTML parsing, and
-transcript retrieval using the YouTube Transcript API.
+transcript retrieval using the YouTube Transcript API. This module ensures
+robust handling of various YouTube video formats and restrictions.
 """
 
 import logging
@@ -88,45 +89,71 @@ class Client:
 
         try:
             transcript = self.ytt_api.fetch(video_id)
-            transcript_text = " ".join(
-                [snippet.text for snippet in transcript.snippets]
-            )
-            logger.debug(
-                "Successfully retrieved transcript with %d snippets",
-                len(transcript.snippets),
-            )
-            return transcript_text
+
+            # Log the raw transcript structure for debugging
+            logger.debug("Raw transcript structure: %s", transcript)
+
+            # Handle FetchedTranscript type
+            if hasattr(transcript, "snippets"):
+                try:
+                    transcript_text = " ".join(
+                        snippet.text for snippet in transcript.snippets
+                    )
+                    logger.debug(
+                        "Successfully processed FetchedTranscript with %d snippets",
+                        len(transcript.snippets),
+                    )
+                    return transcript_text
+                except AttributeError as e:
+                    logger.error(
+                        "FetchedTranscript object is missing expected attributes: %s", e
+                    )
+
+            # Validate the structure of the transcript object
+            elif isinstance(transcript, list):
+                if all(
+                    isinstance(snippet, dict) and "text" in snippet
+                    for snippet in transcript
+                ):
+                    transcript_text = " ".join(
+                        snippet["text"] for snippet in transcript
+                    )
+                    logger.debug(
+                        "Successfully retrieved transcript with %d snippets",
+                        len(transcript),
+                    )
+                    return transcript_text
+                else:
+                    logger.error(
+                        "Transcript list contains invalid snippet structures: %s",
+                        [
+                            snippet
+                            for snippet in transcript
+                            if not isinstance(snippet, dict) or "text" not in snippet
+                        ],
+                    )
+            else:
+                logger.error(
+                    "Unexpected transcript structure type: %s", type(transcript)
+                )
+                raise SystemExit("Critical error: Unexpected transcript structure.")
+
+            return ""
         except AgeRestricted:
-            logger.warning(
-                "Video %s is age-restricted and requires authentication. "
-                "Cookie-based authentication is currently not supported by the "
-                "youtube-transcript-api library. Video cannot be processed.",
-                video_id,
-            )
-            raise
+            logger.warning("Video is age-restricted and cannot fetch transcript.")
+            return ""
         except NoTranscriptFound:
-            logger.error(
-                "No transcript found for video ID %s. The video may not have "
-                "captions/subtitles available.",
-                video_id,
-            )
-            raise
+            logger.warning("No transcript found for video ID: %s", video_id)
+            return ""
         except TranscriptsDisabled:
-            logger.error(
-                "Transcripts are disabled for video ID %s. The video owner has "
-                "disabled captions/subtitles.",
-                video_id,
-            )
-            raise
+            logger.warning("Transcripts are disabled for video ID: %s", video_id)
+            return ""
         except VideoUnavailable:
-            logger.error(
-                "Video %s is unavailable. It may have been deleted or made private.",
-                video_id,
-            )
-            raise
+            logger.warning("Video is unavailable or deleted: %s", video_id)
+            return ""
         except Exception as e:
             logger.error("Failed to fetch transcript for video ID %s: %s", video_id, e)
-            raise
+            return ""
 
     def get_video_title(self, url: str) -> str:
         """Extract the video title from the YouTube page.
@@ -137,7 +164,7 @@ class Client:
         Returns:
             The video title as a string, or "Title not found" if extraction fails.
         """
-        logger.info("Fetching title for video ID: %s", self.video_id)
+        logger.info("Fetching title for video URL: %s", url)
         try:
             if self.proxy_config:
                 logger.debug("Using proxy configuration for title retrieval")

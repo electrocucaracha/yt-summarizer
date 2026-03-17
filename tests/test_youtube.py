@@ -1,19 +1,23 @@
-from unittest.mock import MagicMock
+import unittest
+from unittest.mock import patch
 
-from yt_summarizer.youtube import Client
+from src.yt_summarizer.youtube import Client
 
 
-def test_get_video_transcript():
-    youtube_transcript_api_mock = MagicMock()
-    youtube_transcript_api_mock.fetch.return_value.snippets = [
-        MagicMock(text="Snippet 1"),
-        MagicMock(text="Snippet 2"),
-    ]
+class TestYouTubeClient(unittest.TestCase):
 
-    client = Client()
-    client.ytt_api = youtube_transcript_api_mock
+    def setUp(self):
+        self.mock_url = "https://youtube.com/video123"
+        self.client = Client(proxy_username="mock_user", proxy_password="mock_pass")
 
-    transcript = client.get_video_transcript("https://www.youtube.com/watch?v=abc123")
+    @patch("yt_summarizer.youtube.YouTubeTranscriptApi.fetch")
+    def test_get_transcript(self, mock_fetch):
+        mock_fetch.return_value = [{"text": "Sample text", "start": 0, "duration": 5}]
+        transcript = self.client.get_video_transcript(
+            "https://youtube.com/watch?v=mock_id"
+        )
+        self.assertEqual(transcript, "Sample text")
 
-    assert transcript == "Snippet 1 Snippet 2"
-    youtube_transcript_api_mock.fetch.assert_called_once()
+
+if __name__ == "__main__":
+    unittest.main()
