@@ -80,7 +80,7 @@ deps =
     pyink
 skip_install = true
 commands =
-    ruff check src/ teststo
+    ruff check src/ tests/
     black --check src/ tests/
     isort --check src/ tests/
     pyink --check src/ tests/

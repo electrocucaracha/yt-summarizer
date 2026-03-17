@@ -15,7 +15,9 @@
 
 """Notion database client for video management.
 
-Provides a client interface to the Notion API for managing video-related data. This includes handling transcripts, summaries, and metadata. The client ensures seamless conversion between Notion API property types and Python data structures.
+Provides a client interface to the Notion API for managing video-related data.
+This includes handling transcripts, summaries, and metadata. The client ensures
+seamless conversion between Notion API property types and Python data structures.
 """
 
 # pylint: disable=too-many-return-statements,too-many-branches,too-many-statements,too-many-locals
@@ -251,8 +253,6 @@ class Client:
 
     def get_database_content(self, database_id: str):
         """Retrieve all content from a Notion database using direct HTTP request."""
-        import httpx
-
         pages = []
         has_more = True
         start_cursor = None
@@ -584,11 +584,9 @@ class Client:
                         "Successfully created a new page with ID: %s", new_page_id
                     )
                     return True
-                else:
-                    logger.error("Failed to create a new page in the database.")
-                    return False
-            else:
-                logger.error("Error updating page: %s", e)
+                logger.error("Failed to create a new page in the database.")
+                return False
+            logger.error("Error updating page: %s", e)
             return False
 
     def create_page(
@@ -637,7 +635,7 @@ class Client:
                 )
                 db_properties = database.get("properties", {})
 
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught
             logger.error("Failed retrieving database schema: %s", e)
             return None
 
@@ -687,7 +685,7 @@ class Client:
                 return page.get("id")
 
             except notion_client.errors.APIResponseError as e:
-                if e.response.status_code == 404:
+                if e.response.status_code == 404:  # pylint: disable=no-member
                     logger.error("Page not found. Creating a new page.")
                     # Retry creating the page
                     try:
@@ -697,13 +695,15 @@ class Client:
                         )
                         logger.debug("Retry page creation response: %s", page)
                         return page.get("id")
-                    except Exception as retry_error:
+                    except (  # pylint: disable=broad-exception-caught
+                        Exception
+                    ) as retry_error:
                         logger.error("Failed to create page on retry: %s", retry_error)
                         return None
                 else:
                     logger.error("APIResponseError during page creation: %s", e)
                     return None
-            except Exception as e:
+            except Exception as e:  # pylint: disable=broad-exception-caught
                 logger.error("Unexpected error during page creation: %s", e)
                 return None
 
@@ -726,17 +726,17 @@ class Client:
         except ValueError:
             return False
 
-    def search(self, filter: dict):
+    def search(self, search_filter: dict):
         """Search the Notion database using a filter.
 
         Args:
-            filter: A dictionary representing the search filter criteria.
+            search_filter: A dictionary representing the search filter criteria.
 
         Returns:
             A dictionary containing search results. The results are simulated
             and should be replaced with actual Notion API call results.
         """
-        logger.debug("Performing search with filter: %s", filter)
+        logger.debug("Performing search with filter: %s", search_filter)
         # Simulate a search operation (replace with actual Notion API call)
         return {"results": []}
 

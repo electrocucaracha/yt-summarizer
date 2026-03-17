@@ -57,6 +57,7 @@ class Client:
             KeyError: If the URL does not contain a valid 'v' query parameter.
         """
         self.ytt_api = YouTubeTranscriptApi()
+        self.proxy_config = None
         if proxy_username and proxy_password:
             logger.debug("Using proxy authentication for transcript retrieval")
             self.proxy_config = WebshareProxyConfig(
@@ -64,7 +65,9 @@ class Client:
             )
             self.ytt_api = YouTubeTranscriptApi(proxy_config=self.proxy_config)
 
-    def get_video_transcript(self, url: str) -> str:
+    def get_video_transcript(  # pylint: disable=too-many-return-statements
+        self, url: str
+    ) -> str:
         """Retrieve the complete transcript of the YouTube video.
 
         Fetches the transcript from YouTube's transcript API and joins all
@@ -123,15 +126,14 @@ class Client:
                         len(transcript),
                     )
                     return transcript_text
-                else:
-                    logger.error(
-                        "Transcript list contains invalid snippet structures: %s",
-                        [
-                            snippet
-                            for snippet in transcript
-                            if not isinstance(snippet, dict) or "text" not in snippet
-                        ],
-                    )
+                logger.error(
+                    "Transcript list contains invalid snippet structures: %s",
+                    [
+                        snippet
+                        for snippet in transcript
+                        if not isinstance(snippet, dict) or "text" not in snippet
+                    ],
+                )
             else:
                 logger.error(
                     "Unexpected transcript structure type: %s", type(transcript)
@@ -151,7 +153,7 @@ class Client:
         except VideoUnavailable:
             logger.warning("Video is unavailable or deleted: %s", video_id)
             return ""
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught
             logger.error("Failed to fetch transcript for video ID %s: %s", video_id, e)
             return ""
 
@@ -169,10 +171,10 @@ class Client:
             if self.proxy_config:
                 logger.debug("Using proxy configuration for title retrieval")
                 response = requests.get(
-                    url, proxies=self.proxy_config.to_requests_dict()
+                    url, proxies=self.proxy_config.to_requests_dict(), timeout=30
                 )
             else:
-                response = requests.get(url)
+                response = requests.get(url, timeout=30)
             response.raise_for_status()
             html_content = response.text
             soup = BeautifulSoup(html_content, "html.parser")
@@ -186,5 +188,5 @@ class Client:
             requests.exceptions.RequestException,
             requests.exceptions.HTTPError,
         ) as e:
-            logger.error("Failed to fetch title for video ID %s: %s", self.video_id, e)
+            logger.error("Failed to fetch title for video URL %s: %s", url, e)
             return "Title not found"

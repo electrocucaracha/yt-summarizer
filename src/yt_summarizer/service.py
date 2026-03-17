@@ -44,7 +44,7 @@ class YouTubeSummarizerService:
     and key points using an LLM, and persisting results back to Notion.
     """
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         self,
         token: str,
         notion_db_id: str,
@@ -233,7 +233,7 @@ class YouTubeSummarizerService:
                         self.notion_db_id,
                         properties=properties,
                     )
-            except Exception as e:
+            except Exception as e:  # pylint: disable=broad-exception-caught
                 logger.error("Failed to update or create video in Notion: %s", e)
         else:
             logger.info("No changes detected for video: %s", video.url)
