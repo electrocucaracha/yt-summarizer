@@ -97,3 +97,7 @@ line-length = 88
 quote-style = "double"
 indent-style = "space"
 line-ending = "auto"
+
+[[tool.mypy.overrides]]
+module = "requests.*"
+ignore_missing_imports = true

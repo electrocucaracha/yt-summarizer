@@ -26,7 +26,7 @@ import logging
 import time
 import uuid
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, cast
 
 import httpx
 import notion_client
@@ -264,7 +264,9 @@ class Client:
         }
 
         while has_more:
-            payload = {"start_cursor": start_cursor} if start_cursor else {}
+            payload: Dict[str, Any] = (
+                {"start_cursor": start_cursor} if start_cursor else {}
+            )
             response = httpx.post(url, headers=headers, json=payload)
             response.raise_for_status()
             data = response.json()
@@ -328,7 +330,7 @@ class Client:
         """
         logger.info("Fetching properties for page ID: %s", page_id)
         logger.debug("Retrieving page with ID: %s", page_id)
-        page = self.notion_client.pages.retrieve(page_id=page_id)
+        page = cast(Dict[str, Any], self.notion_client.pages.retrieve(page_id=page_id))
         logger.debug("Page data retrieved: %s", page)
         properties = {}
         for key, value in page.get("properties", {}).items():
@@ -460,7 +462,10 @@ class Client:
         Note:
             Uses the Notion SDK client to retrieve the database schema.
         """
-        database = self.notion_client.databases.retrieve(database_id=database_id)
+        database = cast(
+            Dict[str, Any],
+            self.notion_client.databases.retrieve(database_id=database_id),
+        )
         db_properties = database.get("properties", {})
         schema = {}
         for prop_name, prop_config in db_properties.items():
@@ -500,10 +505,12 @@ class Client:
 
         # Get database schema to determine property types
         max_retries = 3
+        database: Dict[str, Any] = {}
         for attempt in range(max_retries):
             try:
-                database = self.notion_client.databases.retrieve(
-                    database_id=database_id
+                database = cast(
+                    Dict[str, Any],
+                    self.notion_client.databases.retrieve(database_id=database_id),
                 )
                 break
             except HTTPStatusError as e:
@@ -518,6 +525,12 @@ class Client:
                     logger.error("Failed to retrieve database: %s", e)
                     raise
 
+        if not database:
+            logger.error(
+                "Failed to retrieve database schema after %d retries", max_retries
+            )
+            return False
+
         db_properties = database.get("properties", {})
         logger.debug("Database response keys: %s", list(database.keys()))
 
@@ -528,7 +541,10 @@ class Client:
             )
             logger.debug("Attempting to retrieve page with ID: %s", page_id)
             try:
-                page = self.notion_client.pages.retrieve(page_id=page_id)
+                page = cast(
+                    Dict[str, Any],
+                    self.notion_client.pages.retrieve(page_id=page_id),
+                )
                 logger.debug("Successfully retrieved page: %s", page)
             except notion_client.errors.APIResponseError as e:
                 if "404" in str(e):
@@ -609,7 +625,10 @@ class Client:
         """
         logger.info("Creating a new page in database: %s", database_id)
         try:
-            database = self.notion_client.databases.retrieve(database_id=database_id)
+            database = cast(
+                Dict[str, Any],
+                self.notion_client.databases.retrieve(database_id=database_id),
+            )
 
             # Debug: Log the structure of the database object
             logger.debug("Retrieved database object: %s", database)
@@ -625,8 +644,11 @@ class Client:
                 data_source_id = data_sources[0]["id"]
 
                 # Retrieve schema from data source using the Notion SDK client
-                data_source = self.notion_client.data_sources.retrieve(
-                    data_source_id=data_source_id
+                data_source = cast(
+                    Dict[str, Any],
+                    self.notion_client.data_sources.retrieve(
+                        data_source_id=data_source_id
+                    ),
                 )
                 db_properties = data_source.get("properties", {})
             else:
@@ -677,21 +699,27 @@ class Client:
 
             try:
                 # Create the page
-                page = self.notion_client.pages.create(
-                    parent={"database_id": database_id},
-                    properties=formatted_properties,
+                page = cast(
+                    Dict[str, Any],
+                    self.notion_client.pages.create(
+                        parent={"database_id": database_id},
+                        properties=formatted_properties,
+                    ),
                 )
                 logger.debug("Page creation response: %s", page)
                 return page.get("id")
 
             except notion_client.errors.APIResponseError as e:
-                if e.response.status_code == 404:  # pylint: disable=no-member
+                if "404" in str(e):
                     logger.error("Page not found. Creating a new page.")
                     # Retry creating the page
                     try:
-                        page = self.notion_client.pages.create(
-                            parent={"database_id": database_id},
-                            properties=formatted_properties,
+                        page = cast(
+                            Dict[str, Any],
+                            self.notion_client.pages.create(
+                                parent={"database_id": database_id},
+                                properties=formatted_properties,
+                            ),
                         )
                         logger.debug("Retry page creation response: %s", page)
                         return page.get("id")

@@ -23,6 +23,7 @@ of all components for efficient video summarization.
 
 import copy
 import logging
+from typing import Optional
 
 import httpx
 import yt_dlp
@@ -50,8 +51,8 @@ class YouTubeSummarizerService:
         notion_db_id: str,
         model: str = "ollama/llama3.2",
         api_base: str = "http://localhost:11434",
-        proxy_username: str = None,
-        proxy_password: str = None,
+        proxy_username: Optional[str] = None,
+        proxy_password: Optional[str] = None,
     ):
         """Initialize the summarizer service with database and LLM clients.
 

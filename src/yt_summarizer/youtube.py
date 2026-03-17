@@ -22,6 +22,7 @@ robust handling of various YouTube video formats and restrictions.
 """
 
 import logging
+from typing import Optional
 from urllib.parse import parse_qs, urlparse
 
 import requests
@@ -45,7 +46,9 @@ class Client:
     from YouTube videos by parsing the video URL and using official APIs.
     """
 
-    def __init__(self, proxy_username: str = None, proxy_password: str = None):
+    def __init__(
+        self, proxy_username: Optional[str] = None, proxy_password: Optional[str] = None
+    ):
         """Initialize YouTube client with a video URL.
 
         Args:
@@ -181,7 +184,7 @@ class Client:
 
             # Extract title from Open Graph meta tag for reliable results
             title_tag = soup.find("meta", property="og:title")
-            title = title_tag["content"] if title_tag else "Title not found"
+            title = str(title_tag["content"]) if title_tag else "Title not found"
             logger.debug("Successfully retrieved title: %s", title)
             return title
         except (
