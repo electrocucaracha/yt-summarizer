@@ -1,11 +1,15 @@
+"""Tests for the YouTubeVideo model."""
+
 import unittest
 
 from yt_summarizer.model import YouTubeVideo
 
 
 class TestYouTubeVideo(unittest.TestCase):
+    """Tests for the YouTubeVideo data model class."""
 
     def test_video_initialization(self):
+        """Test that YouTubeVideo initializes with all expected attributes."""
         video = YouTubeVideo(
             id="123",
             url="https://youtube.com/video123",
