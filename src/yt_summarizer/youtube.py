@@ -184,7 +184,8 @@ class Client:
 
             # Extract title from Open Graph meta tag for reliable results
             title_tag = soup.find("meta", property="og:title")
-            title = str(title_tag["content"]) if title_tag else "Title not found"
+            title_content = title_tag.get("content") if title_tag else None
+            title = str(title_content).strip() if title_content else "Title not found"
             logger.debug("Successfully retrieved title: %s", title)
             return title
         except (
