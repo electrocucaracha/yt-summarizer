@@ -27,6 +27,10 @@ import litellm
 logger = logging.getLogger(__name__)
 
 
+class LLMConnectionError(RuntimeError):
+    """Raised when the configured LLM endpoint cannot be reached."""
+
+
 class Client:
     """Client for interacting with Language Models.
 
@@ -61,47 +65,34 @@ class Client:
         """
         logger.info("Generating summary using LLM")
         logger.debug("Summarizing %d characters of text", len(text))
-        try:
-            messages = [
-                {
-                    "role": "system",
-                    "content": (
-                        "You are a professional summarization assistant. "
-                        "Your task is to generate a concise, accurate summary "
-                        "based only on the provided video transcript. "
-                        "Return only one well-written paragraph. "
-                        "The final output must not exceed 2000 characters, "
-                        "including spaces."
-                    ),
-                },
-                {
-                    "role": "user",
-                    "content": (
-                        "Summarize the following video transcript in 3–5 sentences. "
-                        "Write a single clear paragraph. "
-                        "Do not add any information that is not explicitly stated "
-                        "in the transcript. "
-                        "Ensure the response is no longer than 2000 characters, "
-                        "including spaces.\n\n"
-                        f"{text}"
-                    ),
-                },
-            ]
-            response = litellm.completion(
-                model=self.model,
-                messages=messages,
-                api_base=self.api_base,
-                temperature=0.1,
-                stream=False,
-            )
-            summary = response.choices[0].message.content
-            logger.debug(
-                "Successfully generated summary of %d characters", len(summary)
-            )
-            return summary
-        except Exception as e:
-            logger.error("Failed to generate summary: %s", e)
-            raise
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "You are a professional summarization assistant. "
+                    "Your task is to generate a concise, accurate summary "
+                    "based only on the provided video transcript. "
+                    "Return only one well-written paragraph. "
+                    "The final output must not exceed 2000 characters, "
+                    "including spaces."
+                ),
+            },
+            {
+                "role": "user",
+                "content": (
+                    "Summarize the following video transcript in 3–5 sentences. "
+                    "Write a single clear paragraph. "
+                    "Do not add any information that is not explicitly stated "
+                    "in the transcript. "
+                    "Ensure the response is no longer than 2000 characters, "
+                    "including spaces.\n\n"
+                    f"{text}"
+                ),
+            },
+        ]
+        summary = self._complete(messages=messages, action="generate summary")
+        logger.debug("Successfully generated summary of %d characters", len(summary))
+        return summary
 
     def get_main_points(self, text: str) -> str:
         """Extract the main points and key takeaways from the provided text.
@@ -117,32 +108,41 @@ class Client:
         """
         logger.info("Extracting main points using LLM")
         logger.debug("Extracting main points from %d characters of text", len(text))
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "You are a professional content analysis assistant. "
+                    "Extract the main points from a video transcript. "
+                    "Return only clear bullet points based strictly on the transcript. "
+                    "The final output must not exceed 2000 characters, "
+                    "including spaces."
+                ),
+            },
+            {
+                "role": "user",
+                "content": (
+                    "From the following transcript, extract the key points as "
+                    "concise bullet points. "
+                    "Do not include explanations, introductions, or conclusions. "
+                    "Do not add any information not explicitly stated in the "
+                    "transcript. "
+                    "Ensure the response is no longer than 2000 characters, "
+                    "including spaces.\n\n"
+                    f"{text}"
+                ),
+            },
+        ]
+        main_points = self._complete(messages=messages, action="extract main points")
+        logger.debug(
+            "Successfully extracted main points of %d characters",
+            len(main_points),
+        )
+        return main_points
+
+    def _complete(self, messages: list[dict[str, str]], action: str) -> str:
+        """Run a LiteLLM completion request and normalize connectivity failures."""
         try:
-            messages = [
-                {
-                    "role": "system",
-                    "content": (
-                        "You are a professional content analysis assistant. "
-                        "Extract the main points from a video transcript. "
-                        "Return only clear bullet points based strictly on the transcript. "
-                        "The final output must not exceed 2000 characters, "
-                        "including spaces."
-                    ),
-                },
-                {
-                    "role": "user",
-                    "content": (
-                        "From the following transcript, extract the key points as "
-                        "concise bullet points. "
-                        "Do not include explanations, introductions, or conclusions. "
-                        "Do not add any information not explicitly stated in the "
-                        "transcript. "
-                        "Ensure the response is no longer than 2000 characters, "
-                        "including spaces.\n\n"
-                        f"{text}"
-                    ),
-                },
-            ]
             response = litellm.completion(
                 model=self.model,
                 messages=messages,
@@ -150,12 +150,16 @@ class Client:
                 temperature=0.1,
                 stream=False,
             )
-            main_points = response.choices[0].message.content
-            logger.debug(
-                "Successfully extracted main points of %d characters",
-                len(main_points),
+        except litellm.exceptions.APIConnectionError as exc:
+            message = (
+                f"Unable to {action} because the LLM endpoint '{self.api_base}' "
+                f"for model '{self.model}' is unavailable. "
+                "Verify the service is running and reachable, then try again."
             )
-            return main_points
-        except Exception as e:
-            logger.error("Failed to extract main points: %s", e)
+            logger.error("%s Original error: %s", message, exc)
+            raise LLMConnectionError(message) from exc
+        except litellm.exceptions.APIError as exc:
+            logger.error("Failed to %s: %s", action, exc)
             raise
+
+        return response.choices[0].message.content

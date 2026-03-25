@@ -25,6 +25,7 @@ import copy
 import logging
 from typing import Optional
 
+import click
 import httpx
 import yt_dlp
 from youtube_transcript_api.proxies import WebshareProxyConfig
@@ -115,6 +116,7 @@ class YouTubeSummarizerService:
             if not prop.get("URL"):
                 logger.debug("Skipping record %d: No YouTube URL found", i)
                 invalid_count += 1
+                click.echo(f"Record {i} skipped: No YouTube URL found.")
                 continue
 
             valid_count += 1

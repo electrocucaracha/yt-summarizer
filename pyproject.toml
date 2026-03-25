@@ -4,6 +4,7 @@ version = "0.0.1"
 description = "YouTube summarizer videos"
 dependencies = [
     "click",
+    "click-spinner",
     "notion-client",
     "youtube-transcript-api",
     "beautifulsoup4",

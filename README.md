@@ -130,6 +130,8 @@ yt_summarizer --notion-db-id "your-database-id" --notion-token-file "/path/to/to
 - `--api-base`: LLM API base URL (default: `http://localhost:11434`, or set `LLM_API_BASE`)
 - `--log-level`: Logging verbosity - DEBUG, INFO, WARNING, ERROR, or CRITICAL (default: INFO)
 
+If you use Ollama locally, make sure the service is running before starting the CLI. When the configured LLM endpoint cannot be reached, the CLI now exits with a specific connection error that includes the failing `--api-base` and model values.
+
 ## Environment Variables
 
 | Name               | Default                  | Description                                        |

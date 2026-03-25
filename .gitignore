@@ -67,6 +67,7 @@ Thumbs.db
 
 # Other
 *.log
+*.log.*
 *.pot
 node_modules/
 package*.json
