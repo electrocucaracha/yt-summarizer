@@ -42,7 +42,7 @@ fmt:
 	command -v prettier > /dev/null || npm install prettier
 	npx prettier . --write
 	command -v uvx > /dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
-	uvx yamllint -c .github/linters/.yaml-lint.yml .
+	uvx yamllint -c .github/linters/.yaml-lint.yml .github/ deploy/ ci/
 	uvx tox -e lint
 	@echo "Format complete!"
 
