@@ -409,6 +409,18 @@ class Client:
                     )
                     return None
 
+                # Truncate text to 2000 characters (Notion's limit for text properties)
+                max_length = 2000
+                if len(value) > max_length:
+                    logger.warning(
+                        "Text property '%s' exceeds %d character limit. Truncating from %d to %d characters.",
+                        prop_type,
+                        max_length,
+                        len(value),
+                        max_length,
+                    )
+                    value = value[:max_length]
+
                 # Text properties use nested text content structure
                 return {prop_type: [{"text": {"content": value}}]}
             if prop_type == "checkbox":
