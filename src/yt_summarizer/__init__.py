@@ -78,6 +78,46 @@ def _read_token_from_file(file_path: str) -> str:
         ) from exc
 
 
+def _process_playlist(service, playlist_url: str, videos: dict, logger) -> None:
+    """Fetch a YouTube playlist and merge new videos into the processing queue.
+
+    Args:
+        service: The YouTubeSummarizerService instance.
+        playlist_url: URL of the YouTube playlist to process.
+        videos: Mapping of video URL → video object to update in place.
+        logger: Logger instance for diagnostic messages.
+    """
+    click.echo(f"\nProcessing playlist: {playlist_url}")
+    logger.info("Processing playlist: %s", playlist_url)
+    playlist_data = service.get_videos_from_playlist(playlist_url)
+    playlist_title = playlist_data["title"]
+    playlist_videos = playlist_data["videos"]
+
+    click.echo(f"Playlist Title: {playlist_title}")
+    click.echo(f"Playlist contains {len(playlist_videos)} video(s):")
+    for idx, video in enumerate(playlist_videos, 1):
+        click.echo(f"  {idx}. {video.title}")
+        click.echo(f"     URL: {video.url}")
+    click.echo("")
+
+    added_count = 0
+    skipped_count = 0
+    for video in playlist_videos:
+        if video.url in videos:
+            logger.info(
+                "Video '%s' already exists in Notion database, skipping",
+                video.url,
+            )
+            skipped_count += 1
+        else:
+            videos[video.url] = video
+            added_count += 1
+
+    click.echo(f"Added {added_count} new video(s) from playlist to processing queue.")
+    if skipped_count > 0:
+        click.echo(f"Skipped {skipped_count} video(s) already in Notion database.")
+
+
 @click.command()
 @click.option("--notion-db-id", envvar="NOTION_DATABASE_ID")
 @click.option(
@@ -198,41 +238,7 @@ def cli(  # pylint: disable=too-many-arguments,too-many-positional-arguments
 
         # Process the playlist if provided
         if playlist_url:
-            click.echo(f"\nProcessing playlist: {playlist_url}")
-            logger.info("Processing playlist: %s", playlist_url)
-            playlist_data = service.get_videos_from_playlist(playlist_url)
-            playlist_title = playlist_data["title"]
-            playlist_videos = playlist_data["videos"]
-
-            # Display playlist information
-            click.echo(f"Playlist Title: {playlist_title}")
-            click.echo(f"Playlist contains {len(playlist_videos)} video(s):")
-            for idx, video in enumerate(playlist_videos, 1):
-                click.echo(f"  {idx}. {video.title}")
-                click.echo(f"     URL: {video.url}")
-            click.echo("")
-
-            # Add videos to processing queue
-            added_count = 0
-            skipped_count = 0
-            for video in playlist_videos:
-                if video.url in videos:
-                    logger.info(
-                        "Video '%s' already exists in Notion database, skipping",
-                        video.url,
-                    )
-                    skipped_count += 1
-                else:
-                    videos[video.url] = video
-                    added_count += 1
-
-            click.echo(
-                f"Added {added_count} new video(s) from playlist to processing queue."
-            )
-            if skipped_count > 0:
-                click.echo(
-                    f"Skipped {skipped_count} video(s) already in Notion database."
-                )
+            _process_playlist(service, playlist_url, videos, logger)
 
         # Process videos with progress bar
         with _temporary_logger_level(lite_llm_logger, logging.WARNING):
