@@ -247,7 +247,7 @@ class YouTubeSummarizerService:
         Args:
             playlist_url: The URL of the YouTube playlist to extract videos from.
         Returns:
-            A list of YouTubeVideo objects containing metadata for each video in the playlist.
+            A dictionary with 'title' (playlist title) and 'videos' (list of YouTubeVideo objects).
         """
 
         logger.info("Processing playlist: %s", playlist_url)
@@ -280,4 +280,4 @@ class YouTubeSummarizerService:
 
             result.append(video)
 
-        return result
+        return {"title": info.get("title", "Untitled Playlist"), "videos": result}
