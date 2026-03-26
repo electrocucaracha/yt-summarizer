@@ -113,13 +113,9 @@ def _process_playlist(service, playlist_url: str, videos: dict, logger) -> None:
             videos[video.url] = video
             added_count += 1
 
-    click.echo(
-        f"Added {added_count} new video(s) from playlist to processing queue."
-    )
+    click.echo(f"Added {added_count} new video(s) from playlist to processing queue.")
     if skipped_count > 0:
-        click.echo(
-            f"Skipped {skipped_count} video(s) already in Notion database."
-        )
+        click.echo(f"Skipped {skipped_count} video(s) already in Notion database.")
 
 
 @click.command()
