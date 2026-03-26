@@ -13,7 +13,7 @@ help:
 	@echo "Available targets:"
 	@echo "  test  - Run tests using tox"
 	@echo "  lint  - Run linters using super-linter and tox"
-	@echo "  fmt   - Format code using shfmt, yamlfmt, prettier, yamllint, and tox lint"
+	@echo "  fmt   - Format code using shfmt, yamlfmt, prettier, and tox lint; validate YAML with yamllint"
 	@echo "  clean - Remove build artifacts and caches"
 	@echo "  help  - Show this help message"
 
