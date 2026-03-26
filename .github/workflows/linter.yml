@@ -48,7 +48,7 @@ jobs:
         uses: super-linter/super-linter@61abc07d755095a68f4987d1c2c3d1d64408f1f9 # 8.5.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          LINTER_RULES_PATH: /
+          LINTER_RULES_PATH: .github/linters
           SAVE_SUPER_LINTER_OUTPUT: true
           KUBERNETES_KUBECONFORM_OPTIONS: "-ignore-missing-schemas"
           DEFAULT_BRANCH: ${{ github.head_ref || github.ref_name }}
@@ -68,6 +68,7 @@ jobs:
           input: |
             diff: ${{ steps.git-diff.outputs.raw-diff }}
           prompt-file: ./linter-errors.json
+          # yamllint disable rule:line-length
           system-prompt: |
             You are an expert software engineer who specializes in diagnosing and fixing software build and runtime failures. Always provide structured reasoning and propose concrete fixes when possible.
 
@@ -81,6 +82,7 @@ jobs:
             4. **Reflection:** If no clear fix is identifiable, summarize which parts of the log are ambiguous and what further information would be needed to proceed.
 
             Goal: Deliver an insightful and technically sound explanation that not only solves the issue but also strengthens understanding of the system's behavior and failure patterns.
+          # yamllint enable rule:line-length
           # jscpd:ignore-start
       - name: Get the entire analysis output
         id: get-analysis-output

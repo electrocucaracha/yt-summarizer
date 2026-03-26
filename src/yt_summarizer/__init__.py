@@ -142,6 +142,7 @@ def cli(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         FileNotFoundError: If the token file does not exist and NOTION_TOKEN is not set.
         ValueError: If the token file is empty and NOTION_TOKEN is not set.
     """
+    # pylint: disable=too-many-locals,too-many-statements
     # Configure logging
     log_file = "yt_summarizer.log"
     logging.basicConfig(
@@ -214,8 +215,8 @@ def cli(  # pylint: disable=too-many-arguments,too-many-positional-arguments
                 videos.items(),
                 label="Processing videos",
                 item_show_func=_progress_item_label,
-            ) as bar:
-                for url, video in bar:
+            ) as progress_iter:
+                for url, video in progress_iter:
                     logger.info("Processing and storing the video: %s", url)
                     service.upsert_video(video)
         completed_successfully = True

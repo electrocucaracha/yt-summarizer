@@ -13,7 +13,7 @@ help:
 	@echo "Available targets:"
 	@echo "  test  - Run tests using tox"
 	@echo "  lint  - Run linters using super-linter and tox"
-	@echo "  fmt   - Format code using shfmt, yamlfmt, prettier, and tox lint"
+	@echo "  fmt   - Format code using shfmt, yamlfmt, prettier, and tox lint; validate YAML with yamllint"
 	@echo "  clean - Remove build artifacts and caches"
 	@echo "  help  - Show this help message"
 
@@ -27,7 +27,7 @@ test: clean
 lint: clean
 	sudo -E $(DOCKER_CMD) run --rm -v $$(pwd):/tmp/lint \
 	-e RUN_LOCAL=true \
-	-e LINTER_RULES_PATH=/ \
+	-e LINTER_RULES_PATH=.github/linters \
 	ghcr.io/super-linter/super-linter
 	command -v uvx > /dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
 	uvx tox -e lint-check
@@ -42,6 +42,7 @@ fmt:
 	command -v prettier > /dev/null || npm install prettier
 	npx prettier . --write
 	command -v uvx > /dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
+	uvx yamllint -c .github/linters/.yaml-lint.yml .github/ deploy/ ci/
 	uvx tox -e lint
 	@echo "Format complete!"
 
