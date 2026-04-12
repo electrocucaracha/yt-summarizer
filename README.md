@@ -26,6 +26,11 @@ A Python automation tool that retrieves YouTube videos from a Notion database, e
 - **Detailed Logging**: Monitors and troubleshoots the processing pipeline
 - **Error Handling**: Gracefully handles unavailable or restricted videos with detailed error messages
 
+## Key Updates
+
+- **Enhanced CLI Error Handling**: The CLI now exits with a specific connection error message when the configured LLM endpoint cannot be reached. This includes details about the failing `--api-base` and model values.
+- **Improved Logging**: Detailed logs for troubleshooting and monitoring the processing pipeline.
+
 ## Use Cases
 
 - **Content Curation**: Summarize video content for knowledge management
@@ -40,127 +45,13 @@ A Python automation tool that retrieves YouTube videos from a Notion database, e
 - **Videos Without Transcripts**: Can only process videos that have captions/subtitles enabled
 - **Private/Deleted Videos**: Cannot access private, unlisted (without direct link), or deleted videos
 
-## Workflow
+## Summaries
 
-The application processes videos through a complete pipeline:
-
-```mermaid
-sequenceDiagram
-    actor user as User
-    participant cli as CLI
-    participant service as Summarizer Service
-    participant notion as Notion Client
-    participant youtube as YouTube Client
-    participant llm as LLM Client
-
-    user->>cli: Execute with database ID
-    cli->>service: Initialize with credentials
-    cli->>service: Process videos from database
-    service->>notion: Query video records
-    notion-->>service: Return video URLs and metadata
-
-    loop For each video
-        service->>youtube: Fetch transcript and title
-        youtube-->>service: Return transcript and title
-        service->>llm: Generate summary
-        llm-->>service: Return summary
-        service->>llm: Extract main points
-        llm-->>service: Return main points
-        service->>notion: Update database with results
-        notion-->>service: Confirm update
-    end
-
-    service-->>cli: Complete processing
-    cli-->>user: Return summary of results
-```
-
-## Getting Started
-
-### Prerequisites
-
-- Python 3.10 or higher
-- Notion API token (create at [Notion integration](https://www.notion.so/profile/integrations))
-- Notion database with video records containing YouTube URLs
-- LLM API access (local Ollama instance or cloud-based service)
-
-### Installation
-
-1. Clone the repository and navigate to the project directory
-2. Install dependencies:
-
-```bash
-uv sync
-source .venv/bin/activate
-```
-
-### Running the Application
-
-The application requires a Notion API token. By default, it reads the token from `/etc/notion/secrets.txt`. You can either:
-
-1. **Create the token file** (recommended for production):
-
-```bash
-echo "your-notion-token-here" > /etc/notion/secrets.txt
-chmod 600 /etc/notion/secrets.txt
-```
-
-2. **Or use environment variable** (for quick testing):
-
-```bash
-export NOTION_TOKEN="your-notion-token-here"
-```
-
-Then execute the CLI with your Notion database ID:
-
-```bash
-yt_summarizer --notion-db-id "your-database-id" --model "ollama/llama3.2" --api-base "http://localhost:11434"
-```
-
-Or specify a custom token file location:
-
-```bash
-yt_summarizer --notion-db-id "your-database-id" --notion-token-file "/path/to/token/file"
-```
-
-#### Configuration Options
-
-- `--notion-db-id`: Notion database ID (required, or set `NOTION_DATABASE_ID` environment variable)
-- `--notion-token-file`: Path to file containing Notion API token (default: `/etc/notion/secrets.txt`, or set `NOTION_TOKEN_FILE`)
-- `--model`: LLM model identifier (default: `ollama/llama3.2`, or set `LLM_MODEL`)
-- `--api-base`: LLM API base URL (default: `http://localhost:11434`, or set `LLM_API_BASE`)
-- `--log-level`: Logging verbosity - DEBUG, INFO, WARNING, ERROR, or CRITICAL (default: INFO)
-
-If you use Ollama locally, make sure the service is running before starting the CLI. When the configured LLM endpoint cannot be reached, the CLI now exits with a specific connection error that includes the failing `--api-base` and model values.
-
-## Environment Variables
-
-| Name               | Default                  | Description                                        |
-| ------------------ | ------------------------ | -------------------------------------------------- |
-| NOTION_TOKEN       |                          | Notion API token - overrides token file (optional) |
-| NOTION_TOKEN_FILE  | /etc/notion/secrets.txt  | Path to file containing Notion API token           |
-| NOTION_DATABASE_ID |                          | Notion database ID containing videos (required)    |
-| LLM_MODEL          | ollama/llama3.2          | LLM model identifier for analysis                  |
-| LLM_API_BASE       | <http://localhost:11434> | Base URL for the LLM API endpoint                  |
-
-### Running in Docker
-
-When running with Docker, mount the secrets file:
-
-```bash
-docker run -v /path/to/secrets.txt:/etc/notion/secrets.txt \
-  -e NOTION_DATABASE_ID="your-database-id" \
-  yt-summarizer:latest
-```
-
-Or pass the token via environment variable:
-
-```bash
-docker run \
-  -e NOTION_TOKEN="your-notion-token-here" \
-  -e NOTION_DATABASE_ID="your-database-id" \
-  yt-summarizer:latest
-```
-
-## Example
-
-See this [Notion page](https://www.notion.so/electrocucaracha/31a26c1a725580d5bf71e5a9cddc449c?v=31a26c1a7255819e9aa2000c7b5f64f2) for an example result.
+| Title                                    | Notion URL                                                                           | YouTube URL                                                                                  |
+| ---------------------------------------- | ------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------- |
+| KubeCon NA 2025                          | [Notion DB](https://www.notion.so/electrocucaracha/31a26c1a725580d5bf71e5a9cddc449c) | [YouTube Playlist](https://www.youtube.com/playlist?list=PLj6h78yzYM2MLSW4tUDO2gs2pR5UpiD0C) |
+| KubeCon EU 2025                          | [Notion DB](https://www.notion.so/electrocucaracha/31c26c1a725580e6b3ecd4c77d633b35) | [YouTube Playlist](https://www.youtube.com/playlist?list=PLj6h78yzYM2MP0QhYFK8HOb8UqgbIkLMc) |
+| Developer Productivity                   | [Notion DB](https://www.notion.so/electrocucaracha/32e26c1a725580de9425dfbb2f8cb7a1) | [YouTube Playlist](https://www.youtube.com/playlist?list=PLEx5khR4g7PI_fS0YJd1YjOa25wtUCD-r) |
+| AIE CODE 2025: AI Leadership             | [Notion DB](https://www.notion.so/electrocucaracha/32e26c1a72558095a891e938c8291fb9) | [YouTube Playlist](https://www.youtube.com/playlist?list=PLcfpQ4tk2k0WWjA7f5DuTgLOUyy93xsNH) |
+| Cloud Native + Kubernetes AI Day 2025 NA | [Notion DB](https://www.notion.so/electrocucaracha/32e26c1a7255806aad58e2678956376e) | [YouTube Playlist](https://www.youtube.com/playlist?list=PLj6h78yzYM2P6ncTsfp61Chwg5wjqKgcJ) |
+| KubeCon EU 2026                          | [Notion DB](https://www.notion.so/electrocucaracha/34026c1a725580e5a316e9956e548b82) | [YouTube Playlist](https://www.youtube.com/playlist?list=PLj6h78yzYM2MXCOWSN9CqqID6OOvF7wxL) |
