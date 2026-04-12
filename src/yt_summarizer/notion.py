@@ -26,7 +26,7 @@ import logging
 import time
 import uuid
 from datetime import datetime
-from typing import Any, Dict, Optional, cast
+from typing import Any, Dict, List, Optional, cast
 
 import httpx
 import notion_client
@@ -281,6 +281,69 @@ class Client:
         logger.debug("Total pages retrieved: %d", len(pages))
         return pages
 
+    def _get_database_data_source_id(self, database_id: str) -> Optional[str]:
+        """Resolve the primary data source ID for a database."""
+        database = cast(
+            Dict[str, Any],
+            self.notion_client.databases.retrieve(database_id=database_id),
+        )
+        data_sources = database.get("data_sources", [])
+        if not data_sources:
+            logger.warning(
+                "No data sources found for database %s. Falling back to database query.",
+                database_id,
+            )
+            return None
+
+        data_source = data_sources[0]
+        data_source_id = (
+            data_source.get("id") if isinstance(data_source, dict) else None
+        )
+        if not data_source_id:
+            logger.warning(
+                "Database %s returned a data source entry without an ID. "
+                "Falling back to database query.",
+                database_id,
+            )
+            return None
+        return cast(str, data_source_id)
+
+    def _get_page_properties_from_page(self, page: Dict[str, Any]) -> Dict[str, Any]:
+        """Extract property values from a page payload."""
+        properties = {}
+        for key, value in page.get("properties", {}).items():
+            properties[key] = self._get_property_value(value)
+            logger.debug("Processed property '%s': %s", key, properties[key])
+        return properties
+
+    def _query_data_source_content(self, data_source_id: str) -> List[Dict[str, Any]]:
+        """Retrieve all pages from a Notion data source."""
+        pages: List[Dict[str, Any]] = []
+        has_more = True
+        start_cursor = None
+
+        while has_more:
+            query_args: Dict[str, Any] = {
+                "data_source_id": data_source_id,
+                "page_size": 100,
+                "result_type": "page",
+            }
+            if start_cursor:
+                query_args["start_cursor"] = start_cursor
+
+            response = cast(
+                Dict[str, Any], self.notion_client.data_sources.query(**query_args)
+            )
+            results = response.get("results", [])
+            pages.extend(result for result in results if isinstance(result, dict))
+            has_more = response.get("has_more", False)
+            start_cursor = response.get("next_cursor")
+
+        logger.debug(
+            "Total pages retrieved from data source %s: %d", data_source_id, len(pages)
+        )
+        return pages
+
     def get_page_properties_from_database(self, database_id: str):
         """Retrieve all page properties from a database.
 
@@ -294,7 +357,17 @@ class Client:
             List of dictionaries, each containing a page's properties plus its ID.
         """
         logger.info("Retrieving page properties from database: %s", database_id)
-        pages = self.get_database_content(database_id)
+        data_source_id = self._get_database_data_source_id(database_id)
+        if data_source_id:
+            logger.debug(
+                "Using data source query for database %s via data source %s",
+                database_id,
+                data_source_id,
+            )
+            pages = self._query_data_source_content(data_source_id)
+        else:
+            pages = self.get_database_content(database_id)
+
         logger.debug("Retrieved %d pages from database", len(pages))
         logger.debug("Fetching page properties for database ID: %s", database_id)
         logger.debug("Number of pages retrieved: %d", len(pages))
@@ -307,7 +380,10 @@ class Client:
                 continue
 
             logger.debug("Processing page %d with ID: %s", i, page.get("id"))
-            properties = self.get_page_properties(page["id"])
+            if data_source_id:
+                properties = self._get_page_properties_from_page(page)
+            else:
+                properties = self.get_page_properties(page["id"])
             logger.debug("Extracted properties for page %d: %s", i, properties)
             properties["ID"] = page["id"]
             all_properties.append(properties)
@@ -332,10 +408,7 @@ class Client:
         logger.debug("Retrieving page with ID: %s", page_id)
         page = cast(Dict[str, Any], self.notion_client.pages.retrieve(page_id=page_id))
         logger.debug("Page data retrieved: %s", page)
-        properties = {}
-        for key, value in page.get("properties", {}).items():
-            properties[key] = self._get_property_value(value)
-            logger.debug("Processed property '%s': %s", key, properties[key])
+        properties = self._get_page_properties_from_page(page)
         logger.info("Completed fetching properties for page ID: %s", page_id)
         return properties
 
