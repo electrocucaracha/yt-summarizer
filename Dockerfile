@@ -6,8 +6,7 @@ WORKDIR /app
 
 COPY . /app/
 
-# hadolint ignore=DL3018
-RUN apk add --no-cache gcc musl-dev
+RUN apk add --no-cache gcc=15.2.0-r2 musl-dev=1.2.5-r21
 
 RUN uv sync --no-editable && \
     uvx pex -o /tmp/yt-summarizer -c yt_summarizer --include-tools .
