@@ -55,7 +55,10 @@ However, these are counterbalanced by significant opportunities: the ability to 
 
 The event underscored the importance of inclusivity, diversity, and sustainable community engagement as foundational to the ecosystem’s continued growth.
 Programs supporting mentorship, contributor health, and DEI, alongside recognition initiatives and academic partnerships, are fostering a vibrant, collaborative environment.
-The CNCF’s strategic focus on refining governance, expanding end user representation, and supporting regional innovation (e.g., sovereign cloud initiatives) positions the community to address both current demands and future challenges.
+The CNCF’s strategic focus on refining governance,
+expanding end user representation,
+and supporting regional innovation (e.g., sovereign cloud initiatives)
+positions the community to address both current demands and future challenges.
 
 In summary, KubeCon + CloudNativeCon Europe 2025 – London reflected a maturing, interconnected cloud-native landscape where technical innovation, operational excellence, and community values converge.
 The ecosystem is poised to meet the demands of AI-driven, distributed applications while maintaining a strong commitment to security, interoperability, and user empowerment.
