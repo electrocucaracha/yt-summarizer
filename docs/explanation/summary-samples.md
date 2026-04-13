@@ -55,7 +55,10 @@ However, these are counterbalanced by significant opportunities: the ability to 
 
 The event underscored the importance of inclusivity, diversity, and sustainable community engagement as foundational to the ecosystem’s continued growth.
 Programs supporting mentorship, contributor health, and DEI, alongside recognition initiatives and academic partnerships, are fostering a vibrant, collaborative environment.
-The CNCF’s strategic focus on refining governance, expanding end-user representation, and supporting regional innovation (e.g., sovereign cloud initiatives) positions the community to address both current demands and future challenges.
+The CNCF’s strategic focus on refining governance,
+expanding end user representation,
+and supporting regional innovation (e.g., sovereign cloud initiatives)
+positions the community to address both current demands and future challenges.
 
 In summary, KubeCon + CloudNativeCon Europe 2025 – London reflected a maturing, interconnected cloud-native landscape where technical innovation, operational excellence, and community values converge.
 The ecosystem is poised to meet the demands of AI-driven, distributed applications while maintaining a strong commitment to security, interoperability, and user empowerment.
@@ -101,7 +104,8 @@ Ultimately, the event concludes with a call for ongoing experimentation, collabo
 
 Cloud Native & Kubernetes AI Day NA 2025 showcased the rapid evolution and growing complexity of AI workloads in cloud-native environments, with Kubernetes at the center of innovation and operational best practices.
 Across the sessions, a dominant theme was the need for advanced resource management and scheduling to address the unique demands of AI, particularly as organizations scale up to heterogeneous, multi-cloud, and multi-tenant infrastructures.
-Solutions such as Q, Kai, and Device Resource Allocation (DRA) frameworks were highlighted for their ability to optimize GPU utilization, ensure fair resource sharing, and enable topology-aware scheduling, while platforms like Queserve and LLMD demonstrated how intelligent routing, autoscaling, and caching can dramatically improve inference performance and efficiency for both predictive and generative AI models.
+Solutions such as Q, Kai, and Device Resource Allocation (DRA) frameworks were highlighted for their ability to optimize GPU utilization, ensure fair resource sharing, and enable topology-aware scheduling,
+while platforms like Queserve and LLMD demonstrated how intelligent routing, autoscaling, and caching can dramatically improve inference performance and efficiency for both predictive and generative AI models.
 
 Speakers emphasized that technical advancements must be matched by robust data governance, security, and operational maturity.
 Successful AI adoption hinges on high-quality, well-integrated data, automation of routine processes, and a phased, value-driven approach that includes human oversight and cultural readiness.
