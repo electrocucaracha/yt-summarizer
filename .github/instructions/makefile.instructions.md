@@ -5,7 +5,8 @@ applyTo: "**/Makefile, **/makefile, **/*.mk, **/GNUmakefile"
 
 # Makefile Development Instructions
 
-Instructions for writing clean, maintainable, and portable GNU Make Makefiles. These instructions are based on the [GNU Make manual](https://www.gnu.org/software/make/manual/).
+Instructions for writing clean, maintainable, and portable GNU Make Makefiles.
+These instructions are based on the [GNU Make manual](https://www.gnu.org/software/make/manual/).
 
 ## General Principles
 
@@ -86,7 +87,9 @@ CFLAGS += -g
 - Avoid circular dependencies between targets
 - Remember that order-only prerequisites are omitted from automatic variables like `$^`, so reference them explicitly if needed
 
-The example below shows a pattern rule that compiles objects into an `obj/` directory. The directory itself is listed as an order-only prerequisite so it is created before compiling but does not force recompilation when its timestamp changes.
+The example below shows a pattern rule that compiles objects into an `obj/` directory.
+The directory itself is listed as an order-only prerequisite so it is created before compiling,
+but does not force recompilation when its timestamp changes.
 
 ```makefile
 # Normal prerequisites
@@ -175,7 +178,10 @@ CFLAGS = -Wall -O2
 
 ### Splitting Without Adding Whitespace
 
-If you need to split a line without adding whitespace, you can use a special technique: insert `$` (dollar-space) followed by a backslash-newline. The `$` refers to a variable with a single-space name, which doesn't exist and expands to nothing, effectively joining the lines without inserting a space.
+If you need to split a line without adding whitespace, you can use a special technique:
+insert `$` (dollar-space) followed by a backslash-newline.
+The `$` refers to a variable with a single-space name, which doesn't exist and expands to nothing,
+effectively joining the lines without inserting a space.
 
 ```makefile
 # Concatenate strings without adding whitespace

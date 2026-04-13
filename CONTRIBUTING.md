@@ -1,6 +1,7 @@
 # Contributing to YouTube Summarizer
 
-Thank you for your interest in contributing to the YouTube Summarizer project. This document provides guidelines and instructions for developers.
+Thank you for your interest in contributing to the YouTube Summarizer project.
+This document provides guidelines and instructions for developers.
 
 ## Development Setup
 

@@ -1,6 +1,7 @@
 # Welcome to yt-summarizer
 
-Welcome to the documentation for `yt-summarizer`. This project is organized using the Diátaxis
+Welcome to the documentation for `yt-summarizer`.
+This project is organized using the Diátaxis framework.
 
 ## Tutorials
 
@@ -30,3 +31,4 @@ Background concepts and discussions.
 
 - [How the Summarization Works](explanation/summarization.md)
 - [Design Decisions](explanation/design-decisions.md)
+- [Playlist Summary Samples](explanation/summary-samples.md)

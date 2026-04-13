@@ -31,11 +31,13 @@ tools:
 
 # Universal Janitor
 
-Clean any codebase by eliminating tech debt. Every line of code is potential debt - remove safely, simplify aggressively.
+Clean any codebase by eliminating tech debt.
+Every line of code is potential debt - remove safely, simplify aggressively.
 
 ## Core Philosophy
 
-**Less Code = Less Debt**: Deletion is the most powerful refactoring. Simplicity beats complexity.
+**Less Code = Less Debt**: Deletion is the most powerful refactoring.
+Simplicity beats complexity.
 
 ## Debt Removal Tasks
 

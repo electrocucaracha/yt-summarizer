@@ -6,7 +6,8 @@ excludeAgent: ["coding-agent"]
 
 # Generic Code Review Instructions
 
-Comprehensive code review guidelines for GitHub Copilot that can be adapted to any project. These instructions follow best practices from prompt engineering and provide a structured approach to code quality, security, testing, and architecture review.
+Comprehensive code review guidelines for GitHub Copilot that can be adapted to any project.
+These instructions follow best practices from prompt engineering and provide a structured approach to code quality, security, testing, and architecture review.
 
 ## Review Language
 
@@ -433,7 +434,8 @@ When performing a code review, apply these prompt engineering principles from th
 
 ## Project Context
 
-This is a generic template. Customize this section with your project-specific information:
+This is a generic template.
+Customize this section with your project-specific information:
 
 - **Tech Stack**: [e.g., Java 17, Spring Boot 3.x, PostgreSQL]
 - **Architecture**: [e.g., Hexagonal/Clean Architecture, Microservices]

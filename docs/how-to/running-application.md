@@ -1,6 +1,8 @@
 # Running the Application
 
-The application requires a Notion API token. By default, it reads the token from `/etc/notion/secrets.txt`. You can either:
+The application requires a Notion API token.
+By default, it reads the token from `/etc/notion/secrets.txt`.
+You can either:
 
 1. **Create the token file** (recommended for production):
 
@@ -35,7 +37,8 @@ yt_summarizer --notion-db-id "your-database-id" --notion-token-file "/path/to/to
 - `--api-base`: LLM API base URL (default: `http://localhost:11434`, or set `LLM_API_BASE`)
 - `--log-level`: Logging verbosity - DEBUG, INFO, WARNING, ERROR, or CRITICAL (default: INFO)
 
-If you use Ollama locally, make sure the service is running before starting the CLI. When the configured LLM endpoint cannot be reached, the CLI now exits with a specific connection error that includes the failing `--api-base` and model values.
+If you use Ollama locally, make sure the service is running before starting the CLI.
+When the configured LLM endpoint cannot be reached, the CLI now exits with a specific connection error that includes the failing `--api-base` and model values.
 
 ## Environment Variables
 
@@ -66,9 +69,21 @@ docker run \
   yt-summarizer:latest
 ```
 
+## Running Tests
+
+To run the test suite, use the `make test` command.
+This will clean up any build artifacts, ensure the required dependencies are installed, and execute the tests using `tox`.
+
+```bash
+make test
+```
+
+Ensure that you have the necessary tools installed, such as `uvx`, which will be automatically installed if missing.
+
 ## Troubleshooting
 
 ### Common Issues
 
 - **Unreachable LLM Endpoint**:
-  Ensure the `--api-base` URL is correct and the LLM service is running. The CLI will provide a specific connection error message with details about the failing `--api-base` and model values.
+  Ensure the `--api-base` URL is correct and the LLM service is running.
+  The CLI will provide a specific connection error message with details about the failing `--api-base` and model values.
