@@ -1,3 +1,12 @@
+# SPDX-license-identifier: Apache-2.0
+##############################################################################
+# Copyright (c) 2026
+# All rights reserved. This program and the accompanying materials
+# are made available under the terms of the Apache License, Version 2.0
+# which accompanies this distribution, and is available at
+# http://www.apache.org/licenses/LICENSE-2.0
+##############################################################################
+
 ###########################
 ###########################
 ## Markdown Linter rules ##
@@ -33,4 +42,4 @@ MD036: false # Emphasis used instead of a heading
 #################
 # Rules by tags #
 #################
-blank_lines: false # Error on blank lines
+blank_lines: false # Disable blank-line-tagged rules
