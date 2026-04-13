@@ -46,8 +46,5 @@ A Python automation tool that retrieves YouTube videos from a Notion database, e
 - **Videos Without Transcripts**: Can only process videos that have captions/subtitles enabled
 - **Private/Deleted Videos**: Cannot access private, unlisted (without direct link), or deleted videos
 
-## Summary Samples
-
-Playlist executive summary examples now live in the documentation set.
-See [docs/explanation/summary-samples.md](docs/explanation/summary-samples.md)
-for the full sample collection.
+> See [docs/explanation/summary-samples.md](docs/explanation/summary-samples.md)
+> for the full sample collection.
