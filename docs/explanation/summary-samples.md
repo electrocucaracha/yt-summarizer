@@ -101,7 +101,8 @@ Ultimately, the event concludes with a call for ongoing experimentation, collabo
 
 Cloud Native & Kubernetes AI Day NA 2025 showcased the rapid evolution and growing complexity of AI workloads in cloud-native environments, with Kubernetes at the center of innovation and operational best practices.
 Across the sessions, a dominant theme was the need for advanced resource management and scheduling to address the unique demands of AI, particularly as organizations scale up to heterogeneous, multi-cloud, and multi-tenant infrastructures.
-Solutions such as Q, Kai, and Device Resource Allocation (DRA) frameworks were highlighted for their ability to optimize GPU utilization, ensure fair resource sharing, and enable topology-aware scheduling, while platforms like Queserve and LLMD demonstrated how intelligent routing, autoscaling, and caching can dramatically improve inference performance and efficiency for both predictive and generative AI models.
+Solutions such as Q, Kai, and Device Resource Allocation (DRA) frameworks were highlighted for their ability to optimize GPU utilization, ensure fair resource sharing, and enable topology-aware scheduling,
+while platforms like Queserve and LLMD demonstrated how intelligent routing, autoscaling, and caching can dramatically improve inference performance and efficiency for both predictive and generative AI models.
 
 Speakers emphasized that technical advancements must be matched by robust data governance, security, and operational maturity.
 Successful AI adoption hinges on high-quality, well-integrated data, automation of routine processes, and a phased, value-driven approach that includes human oversight and cultural readiness.
