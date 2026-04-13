@@ -1,9 +1,12 @@
 """Tests for the CLI module."""
 
+import logging
 import unittest
 from unittest.mock import patch
 
-from yt_summarizer import LLMConnectionError, cli
+import litellm
+
+from yt_summarizer import LLMConnectionError, _suppress_litellm_output, cli
 from yt_summarizer.model import YouTubeVideo
 
 
@@ -76,6 +79,13 @@ class TestCli(unittest.TestCase):
             [call.args[0] for call in mock_echo.call_args_list if call.args],
         )
         mock_service.upsert_video.assert_called_once_with(notion_video)
+        mock_service.generate_playlist_summary.assert_called_once_with(
+            [notion_video], playlist_title=None
+        )
+        self.assertIn(
+            "Generating executive summary...",
+            [call.args[0] for call in mock_echo.call_args_list if call.args],
+        )
 
     @patch("yt_summarizer.logging.basicConfig")
     @patch("yt_summarizer._read_token_from_file", return_value="mock_token")
@@ -124,6 +134,86 @@ class TestCli(unittest.TestCase):
             )
         )
         self.assertNotIn("YouTube summarizer has completed.", echo_messages)
+        mock_service.generate_playlist_summary.assert_called_once_with(
+            [notion_video], playlist_title=None
+        )
+        self.assertIn("Generating executive summary...", echo_messages)
+
+    @patch("yt_summarizer.logging.basicConfig")
+    @patch("yt_summarizer._read_token_from_file", return_value="mock_token")
+    @patch("yt_summarizer.click.echo")
+    @patch("yt_summarizer.click.progressbar")
+    @patch("yt_summarizer.YouTubeSummarizerService")
+    def test_cli_passes_playlist_title_to_executive_summary(
+        self,
+        mock_service_cls,
+        mock_progressbar,
+        _mock_echo,
+        _mock_read_token,
+        _mock_basic_config,
+    ):
+        """The CLI should provide playlist title context to the executive summary."""
+        notion_video = YouTubeVideo(url="https://www.youtube.com/watch?v=video1")
+        playlist_video = YouTubeVideo(url="https://www.youtube.com/watch?v=video2")
+        mock_service = mock_service_cls.return_value
+        mock_service.get_videos_from_notion_db.return_value = [notion_video]
+        mock_service.get_videos_from_playlist.return_value = {
+            "title": "Platform Engineering Weekly",
+            "videos": [playlist_video],
+        }
+        mock_progressbar.side_effect = lambda iterable, **kwargs: _FakeProgressBar(
+            list(iterable)
+        )
+
+        cli.callback(
+            notion_db_id="mock_db_id",
+            notion_token_file="/tmp/mock-token",
+            model="ollama/llama3.2",
+            api_base="http://localhost:11434",
+            log_level="INFO",
+            playlist_url="https://youtube.com/playlist?list=abc123",
+            proxy_username=None,
+            proxy_password=None,
+        )
+
+        mock_service.generate_playlist_summary.assert_called_once_with(
+            [notion_video, playlist_video],
+            playlist_title="Platform Engineering Weekly",
+        )
+
+    def test_suppress_litellm_output_restores_logger_and_flag_state(self):
+        """LiteLLM suppression should restore logger and module state after use."""
+        logger = logging.getLogger("LiteLLM")
+        logger.setLevel(logging.INFO)
+        logger.propagate = True
+        litellm.log_level = "DEBUG"
+        litellm.set_verbose = True
+        litellm.suppress_debug_info = False
+        litellm.turn_off_message_logging = False
+
+        expected_level = logger.level
+        expected_propagate = logger.propagate
+        expected_log_level = litellm.log_level
+        expected_set_verbose = litellm.set_verbose
+        expected_suppress_debug_info = litellm.suppress_debug_info
+        expected_turn_off_message_logging = litellm.turn_off_message_logging
+
+        with _suppress_litellm_output():
+            self.assertEqual(logging.ERROR, logging.getLogger("LiteLLM").level)
+            self.assertFalse(logging.getLogger("LiteLLM").propagate)
+            self.assertEqual("ERROR", litellm.log_level)
+            self.assertFalse(litellm.set_verbose)
+            self.assertTrue(litellm.suppress_debug_info)
+            self.assertTrue(litellm.turn_off_message_logging)
+
+        self.assertEqual(expected_level, logging.getLogger("LiteLLM").level)
+        self.assertEqual(expected_propagate, logging.getLogger("LiteLLM").propagate)
+        self.assertEqual(expected_log_level, litellm.log_level)
+        self.assertEqual(expected_set_verbose, litellm.set_verbose)
+        self.assertEqual(expected_suppress_debug_info, litellm.suppress_debug_info)
+        self.assertEqual(
+            expected_turn_off_message_logging, litellm.turn_off_message_logging
+        )
 
 
 if __name__ == "__main__":

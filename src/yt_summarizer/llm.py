@@ -94,6 +94,60 @@ class Client:
         logger.debug("Successfully generated summary of %d characters", len(summary))
         return summary
 
+    def generate_executive_summary(
+        self, text: str, playlist_title: str | None = None
+    ) -> str:
+        """Generate an executive summary from a set of existing summaries.
+
+        Args:
+            text: Combined summaries to synthesize into an executive summary.
+            playlist_title: Optional playlist title to use as domain context.
+
+        Returns:
+            A concise executive summary focused on themes, outcomes, and implications.
+        """
+        logger.info("Generating executive summary using LLM")
+        logger.debug("Synthesizing executive summary from %d characters", len(text))
+        playlist_context = (
+            f"The playlist title is: {playlist_title}. Use it as context for the "
+            "executive summary when relevant. "
+            if playlist_title
+            else ""
+        )
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "You are an executive briefing assistant. "
+                    "Synthesize multiple video summaries into a concise executive "
+                    "summary that highlights the most important themes, outcomes, "
+                    "risks, opportunities, and notable takeaways. "
+                    "Base the response only on the provided summaries. "
+                    "Return only a polished executive summary without bullet points "
+                    "or preamble. The final output must not exceed 2000 characters, "
+                    "including spaces."
+                ),
+            },
+            {
+                "role": "user",
+                "content": (
+                    "Create an executive summary from the following video summaries. "
+                    "Focus on the most important cross-cutting themes and implications. "
+                    "Do not add information that is not explicitly supported by the "
+                    "provided summaries. Write a compact executive summary in one or "
+                    "two short paragraphs, no longer than 2000 characters, including "
+                    "spaces. "
+                    f"{playlist_context}\n\n"
+                    f"{text}"
+                ),
+            },
+        ]
+        summary = self._complete(messages=messages, action="generate executive summary")
+        logger.debug(
+            "Successfully generated executive summary of %d characters", len(summary)
+        )
+        return summary
+
     def get_main_points(self, text: str) -> str:
         """Extract the main points and key takeaways from the provided text.
 

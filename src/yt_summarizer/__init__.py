@@ -29,6 +29,7 @@ from logging.handlers import RotatingFileHandler
 
 import click
 import click_spinner
+import litellm
 
 from .llm import LLMConnectionError
 from .service import YouTubeSummarizerService
@@ -43,6 +44,49 @@ def _temporary_logger_level(logger: logging.Logger, level: int):
         yield
     finally:
         logger.setLevel(previous_level)
+
+
+@contextlib.contextmanager
+def _suppress_litellm_output():
+    """Temporarily suppress noisy LiteLLM logging during user-facing workflows."""
+    logger_names = ("LiteLLM", "LiteLLM Router", "LiteLLM Proxy", "litellm")
+    loggers = [logging.getLogger(name) for name in logger_names]
+    previous_logger_state = [
+        {
+            "logger": logger,
+            "level": logger.level,
+            "propagate": logger.propagate,
+        }
+        for logger in loggers
+    ]
+    previous_litellm_state = {
+        "log_level": getattr(litellm, "log_level", None),
+        "set_verbose": getattr(litellm, "set_verbose", None),
+        "suppress_debug_info": getattr(litellm, "suppress_debug_info", None),
+        "turn_off_message_logging": getattr(litellm, "turn_off_message_logging", None),
+    }
+
+    try:
+        for logger in loggers:
+            logger.setLevel(logging.ERROR)
+            logger.propagate = False
+
+        litellm.log_level = "ERROR"
+        litellm.set_verbose = False
+        litellm.suppress_debug_info = True
+        litellm.turn_off_message_logging = True
+        yield
+    finally:
+        for state in previous_logger_state:
+            state["logger"].setLevel(state["level"])
+            state["logger"].propagate = state["propagate"]
+
+        litellm.log_level = previous_litellm_state["log_level"]
+        litellm.set_verbose = previous_litellm_state["set_verbose"]
+        litellm.suppress_debug_info = previous_litellm_state["suppress_debug_info"]
+        litellm.turn_off_message_logging = previous_litellm_state[
+            "turn_off_message_logging"
+        ]
 
 
 def _progress_item_label(item) -> str:
@@ -78,7 +122,7 @@ def _read_token_from_file(file_path: str) -> str:
         ) from exc
 
 
-def _process_playlist(service, playlist_url: str, videos: dict, logger) -> None:
+def _process_playlist(service, playlist_url: str, videos: dict, logger) -> str:
     """Fetch a YouTube playlist and merge new videos into the processing queue.
 
     Args:
@@ -86,6 +130,9 @@ def _process_playlist(service, playlist_url: str, videos: dict, logger) -> None:
         playlist_url: URL of the YouTube playlist to process.
         videos: Mapping of video URL → video object to update in place.
         logger: Logger instance for diagnostic messages.
+
+    Returns:
+        The playlist title reported by YouTube.
     """
     click.echo(f"\nProcessing playlist: {playlist_url}")
     logger.info("Processing playlist: %s", playlist_url)
@@ -116,6 +163,8 @@ def _process_playlist(service, playlist_url: str, videos: dict, logger) -> None:
     click.echo(f"Added {added_count} new video(s) from playlist to processing queue.")
     if skipped_count > 0:
         click.echo(f"Skipped {skipped_count} video(s) already in Notion database.")
+
+    return playlist_title
 
 
 @click.command()
@@ -193,10 +242,6 @@ def cli(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         ],
     )
 
-    # Reduce verbosity for LiteLLM logs
-    lite_llm_logger = logging.getLogger("LiteLLM")
-    lite_llm_logger.setLevel(max(logging.INFO, getattr(logging, log_level.upper())))
-
     logger = logging.getLogger(__name__)
     logger.debug("Starting YouTube summarizer with log level: %s", log_level)
     logger.info("Using model: %s", model)
@@ -207,6 +252,7 @@ def cli(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     click.echo(f"Using API base: {api_base}")
 
     completed_successfully = False
+    playlist_title = None
     try:
         # Get token from environment variable or read from file
         if "NOTION_TOKEN" in os.environ:
@@ -238,10 +284,10 @@ def cli(  # pylint: disable=too-many-arguments,too-many-positional-arguments
 
         # Process the playlist if provided
         if playlist_url:
-            _process_playlist(service, playlist_url, videos, logger)
+            playlist_title = _process_playlist(service, playlist_url, videos, logger)
 
         # Process videos with progress bar
-        with _temporary_logger_level(lite_llm_logger, logging.WARNING):
+        with _suppress_litellm_output():
             with click.progressbar(
                 videos.items(),
                 label="Processing videos",
@@ -264,3 +310,13 @@ def cli(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         logger.info("Application terminated.")
         if completed_successfully:
             click.echo("YouTube summarizer has completed.")
+
+        # Generate and print the executive summary for the playlist
+        click.echo("Generating executive summary...")
+        with _suppress_litellm_output():
+            with click_spinner.spinner():
+                playlist_summary = service.generate_playlist_summary(
+                    list(videos.values()), playlist_title=playlist_title
+                )
+        click.echo("\nExecutive Summary of the Playlist:")
+        click.echo(playlist_summary)

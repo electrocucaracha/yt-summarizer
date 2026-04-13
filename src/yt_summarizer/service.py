@@ -36,6 +36,7 @@ from .notion import Client as NotionClient
 from .youtube import Client as YouTubeClient
 
 logger = logging.getLogger(__name__)
+PLAYLIST_SUMMARY_CHUNK_SIZE = 25
 
 
 class YouTubeSummarizerService:
@@ -281,3 +282,93 @@ class YouTubeSummarizerService:
             result.append(video)
 
         return {"title": info.get("title", "Untitled Playlist"), "videos": result}
+
+    def _chunk_summaries(
+        self, summaries: list[str], chunk_size: int
+    ) -> list[list[str]]:
+        """Split summaries into fixed-size chunks for hierarchical reduction."""
+        return [
+            summaries[index : index + chunk_size]
+            for index in range(0, len(summaries), chunk_size)
+        ]
+
+    def _reduce_playlist_summaries(
+        self, summaries: list[str], playlist_title: Optional[str] = None
+    ) -> str:
+        """Reduce many video summaries into one summary using fixed-size chunks."""
+        current_summaries = [
+            summary.strip() for summary in summaries if summary.strip()
+        ]
+        reduction_level = 1
+
+        while len(current_summaries) > 1:
+            logger.info(
+                "Reducing playlist summaries at level %d with %d inputs",
+                reduction_level,
+                len(current_summaries),
+            )
+            next_level = []
+            summary_chunks = self._chunk_summaries(
+                current_summaries, PLAYLIST_SUMMARY_CHUNK_SIZE
+            )
+            for chunk_index, chunk in enumerate(summary_chunks, 1):
+                logger.debug(
+                    "Summarizing playlist chunk %d at level %d with %d summaries",
+                    chunk_index,
+                    reduction_level,
+                    len(chunk),
+                )
+                reduced_summary = self.llm_client.generate_executive_summary(
+                    "\n\n".join(chunk), playlist_title=playlist_title
+                ).strip()
+                if reduced_summary:
+                    next_level.append(reduced_summary)
+
+            current_summaries = next_level
+            reduction_level += 1
+
+        return current_summaries[0] if current_summaries else ""
+
+    def generate_playlist_summary(
+        self, videos: list[YouTubeVideo], playlist_title: Optional[str] = None
+    ) -> str:
+        """Generate an executive summary for a playlist based on video summaries.
+
+        Args:
+            videos: List of YouTubeVideo objects with summaries populated.
+            playlist_title: Optional playlist title to use as summary context.
+
+        Returns:
+            A string containing the executive summary limited to 1000 characters.
+        """
+        logger.info("Generating executive summary for playlist")
+
+        # Normalize summaries to ensure they are strings
+        summaries = [
+            str(video.summary).strip()
+            for video in videos
+            if hasattr(video, "summary") and video.summary
+        ]
+        logger.debug("Collected normalized summaries from videos: %s", summaries)
+
+        # Ensure summaries are not empty strings
+        summaries = [summary for summary in summaries if summary]
+        logger.debug("Filtered non-empty summaries: %s", summaries)
+
+        if not summaries:
+            logger.info("No video summaries available to generate a playlist summary")
+            return ""
+
+        if len(summaries) == 1:
+            combined_summary = self.llm_client.generate_executive_summary(
+                summaries[0], playlist_title=playlist_title
+            )
+        else:
+            combined_summary = self._reduce_playlist_summaries(
+                summaries, playlist_title=playlist_title
+            )
+        if len(combined_summary) > 1000:
+            combined_summary = combined_summary[:997] + "..."
+
+        logger.info("Generated executive summary: %s", combined_summary)
+        return combined_summary
