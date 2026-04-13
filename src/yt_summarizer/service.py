@@ -30,6 +30,7 @@ import httpx
 import yt_dlp
 from youtube_transcript_api.proxies import WebshareProxyConfig
 
+from .llm import EXECUTIVE_SUMMARY_CHAR_LIMIT
 from .llm import Client as LLMClient
 from .model import YouTubeVideo
 from .notion import Client as NotionClient
@@ -339,7 +340,8 @@ class YouTubeSummarizerService:
             playlist_title: Optional playlist title to use as summary context.
 
         Returns:
-            A string containing the executive summary limited to 1000 characters.
+            A string containing the executive summary limited to
+            EXECUTIVE_SUMMARY_CHAR_LIMIT characters.
         """
         logger.info("Generating executive summary for playlist")
 
@@ -367,8 +369,10 @@ class YouTubeSummarizerService:
             combined_summary = self._reduce_playlist_summaries(
                 summaries, playlist_title=playlist_title
             )
-        if len(combined_summary) > 1000:
-            combined_summary = combined_summary[:997] + "..."
+        if len(combined_summary) > EXECUTIVE_SUMMARY_CHAR_LIMIT:
+            combined_summary = (
+                combined_summary[: EXECUTIVE_SUMMARY_CHAR_LIMIT - 3] + "..."
+            )
 
         logger.info("Generated executive summary: %s", combined_summary)
         return combined_summary

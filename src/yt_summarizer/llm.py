@@ -25,6 +25,9 @@ import logging
 import litellm
 
 logger = logging.getLogger(__name__)
+TRANSCRIPT_SUMMARY_CHAR_LIMIT = 2000
+MAIN_POINTS_CHAR_LIMIT = 2000
+EXECUTIVE_SUMMARY_CHAR_LIMIT = 6000
 
 
 class LLMConnectionError(RuntimeError):
@@ -73,7 +76,8 @@ class Client:
                     "Your task is to generate a concise, accurate summary "
                     "based only on the provided video transcript. "
                     "Return only one well-written paragraph. "
-                    "The final output must not exceed 2000 characters, "
+                    f"The final output must not exceed {TRANSCRIPT_SUMMARY_CHAR_LIMIT} "
+                    "characters, "
                     "including spaces."
                 ),
             },
@@ -84,7 +88,8 @@ class Client:
                     "Write a single clear paragraph. "
                     "Do not add any information that is not explicitly stated "
                     "in the transcript. "
-                    "Ensure the response is no longer than 2000 characters, "
+                    f"Ensure the response is no longer than {TRANSCRIPT_SUMMARY_CHAR_LIMIT} "
+                    "characters, "
                     "including spaces.\n\n"
                     f"{text}"
                 ),
@@ -124,7 +129,9 @@ class Client:
                     "risks, opportunities, and notable takeaways. "
                     "Base the response only on the provided summaries. "
                     "Return only a polished executive summary without bullet points "
-                    "or preamble. The final output must not exceed 2000 characters, "
+                    "or preamble. "
+                    f"The final output must not exceed {EXECUTIVE_SUMMARY_CHAR_LIMIT} "
+                    "characters, "
                     "including spaces."
                 ),
             },
@@ -135,8 +142,8 @@ class Client:
                     "Focus on the most important cross-cutting themes and implications. "
                     "Do not add information that is not explicitly supported by the "
                     "provided summaries. Write a compact executive summary in one or "
-                    "two short paragraphs, no longer than 2000 characters, including "
-                    "spaces. "
+                    "two short paragraphs, no longer than "
+                    f"{EXECUTIVE_SUMMARY_CHAR_LIMIT} characters, including spaces. "
                     f"{playlist_context}\n\n"
                     f"{text}"
                 ),
@@ -169,7 +176,8 @@ class Client:
                     "You are a professional content analysis assistant. "
                     "Extract the main points from a video transcript. "
                     "Return only clear bullet points based strictly on the transcript. "
-                    "The final output must not exceed 2000 characters, "
+                    f"The final output must not exceed {MAIN_POINTS_CHAR_LIMIT} "
+                    "characters, "
                     "including spaces."
                 ),
             },
@@ -181,7 +189,8 @@ class Client:
                     "Do not include explanations, introductions, or conclusions. "
                     "Do not add any information not explicitly stated in the "
                     "transcript. "
-                    "Ensure the response is no longer than 2000 characters, "
+                    f"Ensure the response is no longer than {MAIN_POINTS_CHAR_LIMIT} "
+                    "characters, "
                     "including spaces.\n\n"
                     f"{text}"
                 ),

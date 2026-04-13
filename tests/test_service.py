@@ -3,6 +3,7 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
+from yt_summarizer.llm import EXECUTIVE_SUMMARY_CHAR_LIMIT
 from yt_summarizer.model import YouTubeVideo
 from yt_summarizer.service import YouTubeSummarizerService
 
@@ -104,6 +105,19 @@ class TestYouTubeSummarizerService(unittest.TestCase):
         self.service.llm_client.generate_executive_summary.assert_called_once_with(
             "summary-1", playlist_title="Engineering Leadership"
         )
+
+    def test_generate_playlist_summary_truncates_to_updated_limit(self):
+        """Executive summaries should be capped to the configured character limit."""
+        videos = [YouTubeVideo(url="https://example.com/1", summary="summary-1")]
+        self.service.llm_client = MagicMock()
+        self.service.llm_client.generate_executive_summary.return_value = "x" * (
+            EXECUTIVE_SUMMARY_CHAR_LIMIT + 50
+        )
+
+        result = self.service.generate_playlist_summary(videos)
+
+        self.assertEqual(EXECUTIVE_SUMMARY_CHAR_LIMIT, len(result))
+        self.assertTrue(result.endswith("..."))
 
 
 if __name__ == "__main__":

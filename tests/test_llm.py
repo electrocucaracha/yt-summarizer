@@ -5,7 +5,13 @@ from unittest.mock import MagicMock, patch
 
 import litellm
 
-from yt_summarizer.llm import Client, LLMConnectionError
+from yt_summarizer.llm import (
+    EXECUTIVE_SUMMARY_CHAR_LIMIT,
+    MAIN_POINTS_CHAR_LIMIT,
+    TRANSCRIPT_SUMMARY_CHAR_LIMIT,
+    Client,
+    LLMConnectionError,
+)
 
 
 class TestLLMClient(unittest.TestCase):
@@ -65,6 +71,7 @@ class TestLLMClient(unittest.TestCase):
         self.assertIn("Create an executive summary", messages[1]["content"])
         self.assertIn("Summary A", messages[1]["content"])
         self.assertIn("Summary B", messages[1]["content"])
+        self.assertIn(str(EXECUTIVE_SUMMARY_CHAR_LIMIT), messages[0]["content"])
 
     @patch("yt_summarizer.llm.litellm.completion")
     def test_generate_executive_summary_includes_playlist_title_context(
@@ -83,6 +90,29 @@ class TestLLMClient(unittest.TestCase):
         self.assertIn(
             "The playlist title is: Engineering Weekly.", messages[1]["content"]
         )
+
+    @patch("yt_summarizer.llm.litellm.completion")
+    def test_summarize_and_main_points_prompts_use_updated_limits(
+        self, mock_completion
+    ):
+        """Transcript prompts should advertise the configured character limits."""
+        mock_completion.return_value = MagicMock(
+            choices=[MagicMock(message=MagicMock(content="ok"))]
+        )
+
+        self.client.summarize("Transcript text")
+        summary_messages = mock_completion.call_args.kwargs["messages"]
+        self.assertIn(
+            str(TRANSCRIPT_SUMMARY_CHAR_LIMIT), summary_messages[0]["content"]
+        )
+        self.assertIn(
+            str(TRANSCRIPT_SUMMARY_CHAR_LIMIT), summary_messages[1]["content"]
+        )
+
+        self.client.get_main_points("Transcript text")
+        main_points_messages = mock_completion.call_args.kwargs["messages"]
+        self.assertIn(str(MAIN_POINTS_CHAR_LIMIT), main_points_messages[0]["content"])
+        self.assertIn(str(MAIN_POINTS_CHAR_LIMIT), main_points_messages[1]["content"])
 
 
 if __name__ == "__main__":
