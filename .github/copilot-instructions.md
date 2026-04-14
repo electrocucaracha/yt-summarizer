@@ -22,7 +22,8 @@ It outlines best practices for leveraging Copilot to enhance productivity and ma
 4. **Documentation**:
    - Document all Copilot-generated code to ensure maintainability.
    - Follow the project's documentation standards as outlined in the [CONTRIBUTING.md](../CONTRIBUTING.md) file.
-   - Use semantic line breaks for Markdown prose, following [SEMBR](https://sembr.org/).
+   - All Markdown changes should use semantic line breaks for prose,
+     following SEMBR: https://sembr.org/
    - Preserve the structure of code fences, tables, YAML front matter, and concise list items unless a wrapped continuation clearly improves readability.
 
 5. **Security**:
@@ -51,5 +52,6 @@ It outlines best practices for leveraging Copilot to enhance productivity and ma
 
 ---
 
-By following these guidelines, developers can effectively integrate GitHub Copilot into the `yt-summarizer` project,
+By following these guidelines,
+developers can effectively integrate GitHub Copilot into the `yt-summarizer` project,
 enhancing productivity and maintaining high code quality.
