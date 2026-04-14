@@ -12,39 +12,73 @@
 [![Scc Code Badge](https://sloc.xyz/github/electrocucaracha/yt-summarizer?category=code)](https://github.com/boyter/scc/)
 [![Scc COCOMO Badge](https://sloc.xyz/github/electrocucaracha/yt-summarizer?category=cocomo)](https://github.com/boyter/scc/)
 
-A Python automation tool that retrieves YouTube videos from a Notion database, extracts their transcripts, generates intelligent summaries using Large Language Models, and updates the database with results.
+`yt-summarizer` is a Python CLI
+that reads YouTube videos from a Notion database,
+retrieves transcripts,
+generates per-video summaries and main points with an LLM,
+and writes the results back to Notion.
+It also supports ingesting a full YouTube playlist into the processing queue
+and produces an executive summary
+that synthesizes the collection.
 
 ![Diagram](docs/assets/concept.png)
 
 ## Key Features
 
-- **Notion Integration**: Retrieves video records from Notion databases containing YouTube URLs
-- **YouTube Transcript Extraction**: Automatically fetches video titles and transcripts
-- **LLM-Powered Summaries**: Generates concise summaries and extracts key points using configurable language models
-- **Flexible Configuration**: Supports local models via Ollama and cloud-based services through LiteLLM
-- **Database Synchronization**: Persists analysis results back to Notion for team collaboration
-- **Detailed Logging**: Monitors and troubleshoots the processing pipeline
-- **Error Handling**: Gracefully handles unavailable or restricted videos with detailed error messages
+- **Notion-backed workflow**:
+  Reads video records from a Notion database
+  and updates them in place.
+- **YouTube playlist support**:
+  Accepts a `--playlist-url`
+  and adds new playlist videos to the current run.
+- **Per-video analysis**:
+  Generates a concise summary
+  and a list of main points for each video.
+- **Executive summaries**:
+  Produces a synthesized playlist or collection-level executive summary
+  at the end of the run.
+- **Flexible LLM backends**:
+  Works with local Ollama models
+  and other LiteLLM-compatible providers.
+- **Operational visibility**:
+  Includes structured logging
+  and clearer connection errors for unreachable LLM endpoints.
 
-## Key Updates
+## How It Works
 
-- **Enhanced CLI Error Handling**: The CLI now exits with a specific connection error message when the configured LLM endpoint cannot be reached.
-  This includes details about the failing `--api-base` and model values.
-- **Improved Logging**: Detailed logs for troubleshooting and monitoring the processing pipeline.
+1. Load existing video records from Notion.
+2. Optionally expand the queue with videos discovered from `--playlist-url`.
+3. Fetch each video's title and transcript from YouTube.
+4. Generate a summary and main points for each video with the configured LLM.
+5. Upsert the results into Notion.
+6. Print an executive summary across the processed collection.
+
+## Notion Database Expectations
+
+The CLI updates Notion properties
+with these names:
+
+- `Title`
+- `URL`
+- `Summary`
+- `Main Points`
 
 ## Use Cases
 
-- **Content Curation**: Summarize video content for knowledge management
-- **Research Archives**: Build searchable archives of video summaries
-- **Team Collaboration**: Store video insights in Notion for discussion
-- **Efficient Reviews**: Extract key points without watching entire videos
-- **Documentation**: Create structured knowledge bases from video analysis
+- Build a shared Notion knowledge base from conference talks and technical playlists.
+- Batch-summarize videos already curated in Notion.
+- Import a new playlist and immediately generate a higher-level executive brief.
+- Capture key points for later review without rewatching full videos.
 
 ## Limitations
 
-- **Age-Restricted Videos**: Cannot process age-restricted YouTube videos as cookie-based authentication is not currently supported by the youtube-transcript-api library
-- **Videos Without Transcripts**: Can only process videos that have captions/subtitles enabled
-- **Private/Deleted Videos**: Cannot access private, unlisted (without direct link), or deleted videos
+- Age-restricted videos are not supported by the current transcript retrieval flow.
+- Videos without captions or transcripts cannot be summarized.
+- Private, deleted, or otherwise inaccessible videos cannot be processed.
+- Playlist processing still depends on each individual video being reachable and transcribed.
 
-> See [docs/explanation/summary-samples.md](docs/explanation/summary-samples.md)
-> for the full sample collection.
+## Additional Documentation
+
+- [Running the application](docs/how-to/running-application.md)
+- [Workflow explanation](docs/explanation/workflow.md)
+- [Executive summary samples](docs/explanation/summary-samples.md)
