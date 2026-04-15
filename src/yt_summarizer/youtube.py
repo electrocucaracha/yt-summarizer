@@ -49,15 +49,11 @@ class Client:
     def __init__(
         self, proxy_username: Optional[str] = None, proxy_password: Optional[str] = None
     ):
-        """Initialize YouTube client with a video URL.
+        """Initialize the YouTube client and optional proxy-backed transcript API.
 
         Args:
-            url: Full YouTube video URL (e.g., https://www.youtube.com/watch?v=VIDEO_ID)
             proxy_username: Optional proxy username for YouTube client.
             proxy_password: Optional proxy password for YouTube client.
-
-        Raises:
-            KeyError: If the URL does not contain a valid 'v' query parameter.
         """
         self.ytt_api = YouTubeTranscriptApi()
         self.proxy_config = None
@@ -71,21 +67,19 @@ class Client:
     def get_video_transcript(  # pylint: disable=too-many-return-statements
         self, url: str
     ) -> str:
-        """Retrieve the complete transcript of the YouTube video.
+        """Retrieve the transcript text for a YouTube video URL.
 
-        Fetches the transcript from YouTube's transcript API and joins all
-        snippets into a single continuous text.
+        The transcript API may return either a ``FetchedTranscript`` object or a
+        list of snippet dictionaries. Both shapes are normalized into a single
+        space-separated string. On unavailable transcripts or request failures,
+        the method logs the problem and returns an empty string.
+
+        Args:
+            url: Full YouTube watch URL containing the ``v`` query parameter.
 
         Returns:
-            A string containing the complete video transcript with all snippets
-            joined by spaces.
-
-        Raises:
-            AgeRestricted: If video is age-restricted and requires authentication.
-            NoTranscriptFound: If no transcript is available for the video.
-            TranscriptsDisabled: If transcripts are disabled for the video.
-            VideoUnavailable: If the video is unavailable or deleted.
-            Exception: For other API call failures.
+            The complete transcript text, or ``""`` when no transcript can be
+            retrieved.
         """
 
         query = urlparse(url).query
@@ -164,10 +158,15 @@ class Client:
         """Extract the video title from the YouTube page.
 
         Parses the video page HTML and extracts the title from the Open Graph
-        meta tag (og:title), which is the canonical page title.
+        meta tag (``og:title``), optionally routing the request through the
+        configured proxy.
+
+        Args:
+            url: Full YouTube video URL.
 
         Returns:
-            The video title as a string, or "Title not found" if extraction fails.
+            The video title, or ``"Title not found"`` when the page request or
+            metadata extraction fails.
         """
         logger.info("Fetching title for video URL: %s", url)
         try:

@@ -85,24 +85,14 @@ class YouTubeSummarizerService:
         logger.debug("Service initialized successfully")
 
     def get_videos_from_notion_db(self):
-        """Retrieve and process all videos from a Notion database.
+        """Retrieve video records from Notion and normalize them into models.
 
-        Fetches all video records from the Notion database, extracts any missing
-        metadata and transcripts from YouTube, and generates summaries and key
-        points using the LLM if not already present.
+        This method does not enrich records with YouTube or LLM data. It only
+        reads page properties from Notion, normalizes the stored URL field, and
+        returns lightweight ``YouTubeVideo`` objects for later processing.
 
         Returns:
-            A list of YouTubeVideo objects with complete metadata, transcripts,
-            summaries, and main points populated.
-
-        Processing flow:
-            1. Retrieve all database records
-            2. For each record with a URL:
-               - Extract YouTube video ID and create YouTubeVideo object
-               - Fetch title from YouTube if missing
-               - Fetch transcript from YouTube if missing
-               - Generate summary via LLM if missing
-               - Extract main points via LLM if missing
+            A list of ``YouTubeVideo`` objects for records that contain a URL.
         """
         logger.info("Retrieving videos from Notion database: %s", self.notion_db_id)
         properties = self.notion_client.get_page_properties_from_database(
@@ -157,14 +147,15 @@ class YouTubeSummarizerService:
         return result
 
     def _process_video(self, video: YouTubeVideo) -> YouTubeVideo:
-        """Process an individual video to populate missing metadata and summaries.
+        """Populate missing title, summary, and main points for one video.
 
-        For a given YouTubeVideo object, this method checks for missing title,
-        transcript, summary, and main points. It retrieves any missing information
-        from YouTube and generates summaries and key points using the LLM as needed.
+        The original ``video`` instance is deep-copied before enrichment. The
+        transcript is fetched only when needed for summary or main-point
+        generation and is not stored back on the returned object.
 
         Args:
             video: A YouTubeVideo object with potentially incomplete data.
+
         Returns:
             The updated YouTubeVideo object with all fields populated.
         """
@@ -198,7 +189,11 @@ class YouTubeSummarizerService:
         return result
 
     def upsert_video(self, video: YouTubeVideo):
-        """Upsert a video's metadata in the Notion database.
+        """Create or update a Notion row when derived video fields changed.
+
+        The method enriches the supplied video, compares the before/after content
+        hash, and only writes ``Title``, ``URL``, ``Summary``, and
+        ``Main Points`` when the persisted fields changed.
 
         Args:
             video: A YouTubeVideo object with updated metadata.
@@ -244,12 +239,14 @@ class YouTubeSummarizerService:
             logger.info("No changes detected for video: %s", video.url)
 
     def get_videos_from_playlist(self, playlist_url: str):
-        """Extract video metadata from a YouTube playlist URL.
+        """Extract playlist title and flat video metadata from a playlist URL.
 
         Args:
             playlist_url: The URL of the YouTube playlist to extract videos from.
+
         Returns:
-            A dictionary with 'title' (playlist title) and 'videos' (list of YouTubeVideo objects).
+            A dictionary with the playlist ``title`` and a ``videos`` list of
+            ``YouTubeVideo`` objects populated with URLs and titles.
         """
 
         logger.info("Processing playlist: %s", playlist_url)
@@ -287,7 +284,13 @@ class YouTubeSummarizerService:
     def _chunk_summaries(
         self, summaries: list[str], chunk_size: int
     ) -> list[list[str]]:
-        """Split summaries into fixed-size chunks for hierarchical reduction."""
+        """Split summaries into fixed-size chunks for hierarchical reduction.
+
+        Examples:
+            >>> service = object.__new__(YouTubeSummarizerService)
+            >>> service._chunk_summaries(["one", "two", "three"], 2)
+            [['one', 'two'], ['three']]
+        """
         return [
             summaries[index : index + chunk_size]
             for index in range(0, len(summaries), chunk_size)
@@ -296,7 +299,12 @@ class YouTubeSummarizerService:
     def _reduce_playlist_summaries(
         self, summaries: list[str], playlist_title: Optional[str] = None
     ) -> str:
-        """Reduce many video summaries into one summary using fixed-size chunks."""
+        """Reduce many summaries into one by iterating over fixed-size chunks.
+
+        Blank summaries are removed before reduction. Each chunk is summarized
+        with playlist context, then the intermediate summaries are reduced again
+        until only one summary remains.
+        """
         current_summaries = [
             summary.strip() for summary in summaries if summary.strip()
         ]
@@ -333,15 +341,16 @@ class YouTubeSummarizerService:
     def generate_playlist_summary(
         self, videos: list[YouTubeVideo], playlist_title: Optional[str] = None
     ) -> str:
-        """Generate an executive summary for a playlist based on video summaries.
+        """Generate an executive summary from the summaries attached to videos.
 
         Args:
-            videos: List of YouTubeVideo objects with summaries populated.
+            videos: List of ``YouTubeVideo`` objects. Only truthy ``summary``
+                values are used.
             playlist_title: Optional playlist title to use as summary context.
 
         Returns:
-            A string containing the executive summary limited to
-            EXECUTIVE_SUMMARY_CHAR_LIMIT characters.
+            A single executive summary string limited to
+            ``EXECUTIVE_SUMMARY_CHAR_LIMIT`` characters.
         """
         logger.info("Generating executive summary for playlist")
 

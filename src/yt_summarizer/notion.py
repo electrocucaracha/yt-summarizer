@@ -317,7 +317,7 @@ class Client:
         return properties
 
     def _query_data_source_content(self, data_source_id: str) -> List[Dict[str, Any]]:
-        """Retrieve all pages from a Notion data source."""
+        """Retrieve all pages from a Notion data source with pagination."""
         pages: List[Dict[str, Any]] = []
         has_more = True
         start_cursor = None
@@ -347,8 +347,9 @@ class Client:
     def get_page_properties_from_database(self, database_id: str):
         """Retrieve all page properties from a database.
 
-        Fetches all pages in the database and extracts their properties,
-        adding the page ID to each property set for later reference.
+        The client prefers the newer data-source query API when the database
+        exposes at least one data source. If no data source is available, it
+        falls back to the legacy database query and per-page property lookup.
 
         Args:
             database_id: The Notion database ID containing the pages.
@@ -423,8 +424,9 @@ class Client:
     ) -> Optional[Dict[str, Any]]:
         """Convert string value to Notion API format based on property type.
 
-        Transforms a string value into the appropriate Notion API structure
-        for the given property type. Handles type conversion and validation.
+        Transforms a value into the appropriate Notion API structure for the
+        given property type. Blank values, unsupported property types, and
+        conversion failures return ``None`` instead of raising.
 
         Args:
             prop_type: The Notion property type (e.g., 'title', 'number', 'checkbox').
@@ -433,8 +435,12 @@ class Client:
         Returns:
             Dictionary in Notion API format for the property, or None if formatting fails.
 
-        Raises:
-            Prints warning on ValueError or TypeError but returns None instead of raising.
+        Examples:
+            >>> client = Client(token="token", client=None)
+            >>> client._format_property_for_update("checkbox", "yes")
+            {'checkbox': True}
+            >>> client._format_property_for_update("multi_select", "python, testing")
+            {'multi_select': [{'name': 'python'}, {'name': 'testing'}]}
         """
         if not value:
             return None
@@ -833,6 +839,13 @@ class Client:
 
         Returns:
             True if the string is a valid UUID, False otherwise.
+
+        Examples:
+            >>> client = Client(token="token", client=None)
+            >>> client._is_valid_uuid("123e4567-e89b-12d3-a456-426614174000")
+            True
+            >>> client._is_valid_uuid("not-a-uuid")
+            False
         """
         try:
             uuid.UUID(value)

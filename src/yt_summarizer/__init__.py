@@ -90,7 +90,20 @@ def _suppress_litellm_output():
 
 
 def _progress_item_label(item) -> str:
-    """Render the current item inside Click progress bars without extra echoes."""
+    """Render the current item inside Click progress bars without extra echoes.
+
+    Examples:
+        >>> from yt_summarizer.model import YouTubeVideo
+        >>> _progress_item_label(
+        ...     (
+        ...         "https://www.youtube.com/watch?v=demo",
+        ...         YouTubeVideo(url="https://www.youtube.com/watch?v=demo"),
+        ...     )
+        ... )
+        'https://www.youtube.com/watch?v=demo'
+        >>> _progress_item_label(YouTubeVideo(url="https://www.youtube.com/watch?v=demo"))
+        'https://www.youtube.com/watch?v=demo'
+    """
     if isinstance(item, tuple) and item:
         return str(item[0])
     return str(getattr(item, "url", item))

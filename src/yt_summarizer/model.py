@@ -37,6 +37,21 @@ class YouTubeVideo:
         transcript: The complete video transcript.
         summary: LLM-generated summary of the video content.
         main_points: LLM-extracted key points and takeaways from the video.
+
+    Example:
+        >>> video = YouTubeVideo(
+        ...     url="https://www.youtube.com/watch?v=demo",
+        ...     title="Demo",
+        ...     summary="Concise summary.",
+        ... )
+        >>> str(video).splitlines() == [
+        ...     "URL: https://www.youtube.com/watch?v=demo",
+        ...     "Title: Demo",
+        ...     "Transcript: ",
+        ...     "Summary: Concise summary.",
+        ...     "Main Points: ",
+        ... ]
+        True
     """
 
     # pylint: disable=redefined-builtin,too-many-arguments,too-many-positional-arguments
@@ -90,6 +105,29 @@ class YouTubeVideo:
         )
 
     def compute_hash(self):
-        """Compute a hash of the video's properties."""
+        """Compute a content hash for change detection.
+
+        The hash currently ignores ``id`` and ``transcript`` because Notion
+        writes are triggered only by changes to the persisted presentation
+        fields.
+
+        Examples:
+            >>> first = YouTubeVideo(
+            ...     url="https://www.youtube.com/watch?v=demo",
+            ...     title="Demo",
+            ...     transcript="first transcript",
+            ...     summary="Summary",
+            ...     main_points="- point",
+            ... )
+            >>> second = YouTubeVideo(
+            ...     url="https://www.youtube.com/watch?v=demo",
+            ...     title="Demo",
+            ...     transcript="updated transcript",
+            ...     summary="Summary",
+            ...     main_points="- point",
+            ... )
+            >>> first.compute_hash() == second.compute_hash()
+            True
+        """
         data = f"{self.title}{self.url}{self.summary}{self.main_points}"
         return hashlib.sha256(data.encode()).hexdigest()
