@@ -103,8 +103,12 @@ As organizations navigate regulatory, operational, and technical complexities, t
 
 Cloud Native & Kubernetes AI Day NA 2025 showcased the rapid evolution and growing complexity of AI workloads in cloud-native environments, with Kubernetes at the center of innovation and operational best practices.
 Across the sessions, a dominant theme was the need for advanced resource management and scheduling to address the unique demands of AI, particularly as organizations scale up to heterogeneous, multi-cloud, and multi-tenant infrastructures.
-Solutions such as Q, Kai, and Device Resource Allocation (DRA) frameworks were highlighted for their ability to optimize GPU utilization, ensure fair resource sharing, and enable topology-aware scheduling,
-while platforms like Queserve and LLMD demonstrated how intelligent routing, autoscaling, and caching can dramatically improve inference performance and efficiency for both predictive and generative AI models.
+Solutions such as Q, Kai, and Device Resource Allocation (DRA) frameworks
+were highlighted for their ability to optimize GPU utilization,
+ensure fair resource sharing, and enable topology-aware scheduling,
+while platforms like Queserve and LLMD demonstrated how intelligent routing,
+autoscaling, and caching can dramatically improve inference performance and
+efficiency for both predictive and generative AI models.
 
 Speakers emphasized that technical advancements must be matched by robust data governance, security, and operational maturity.
 Successful AI adoption hinges on high-quality, well-integrated data, automation of routine processes, and a phased, value-driven approach that includes human oversight and cultural readiness.
@@ -156,3 +160,67 @@ However, these gains require significant investment in upskilling, change manage
 The summit also surfaces the need for new compensation models, as exemplified by 10X’s story point-based system, to better align incentives with the realities of AI-augmented engineering.
 At the same time, speakers caution against the proliferation of “slop”—low-quality or inauthentic output—emphasizing the importance of accountability, modularity, and a relentless focus on quality as AI becomes more deeply embedded in the software lifecycle.
 Ultimately, the event concludes with a call for ongoing experimentation, collaboration, and a shared commitment to high standards, as the playbook for AI-native leadership continues to be written in real time.
+
+## Agentic AI Foundation
+
+### MCP Dev Summit NA 2026
+
+- **Links:** [Notion DB](https://www.notion.so/electrocucaracha/34226c1a7255805f8028e6243c95c819) · [YouTube Playlist](https://www.youtube.com/playlist?list=PLjULwdJUtFdhIBhibLEogtK1XYCNaFyFl)
+
+The MCP Dev Summit NA 2026 marked a pivotal moment for the Model Context
+Protocol (MCP) ecosystem, reflecting its rapid maturation from experimental
+deployments to foundational infrastructure powering agentic AI across diverse
+industries. A central, cross-cutting theme was the transition from early-stage
+prompt engineering to robust, intent-driven agent orchestration,
+with organizations leveraging MCP to integrate real-time data,
+automate complex workflows, and enable both autonomous and
+human-in-the-loop operations. This shift has been underpinned by MCP’s
+extensible protocol, open standards, and a growing suite of SDKs and
+developer tools, which together have driven organic innovation,
+composability, and seamless interoperability between conversational and
+graphical interfaces.
+
+Security, governance, and operational maturity emerged as dominant
+imperatives as MCP adoption accelerates, particularly in regulated sectors
+such as healthcare, finance, and government. The summit highlighted an
+evolving threat landscape—including supply chain attacks,
+prompt injection, privilege escalation, and shadow MCPs—that demands layered
+defenses, provenance tracking, signed artifacts, and centralized gateways.
+Presenters advocated for a move toward agent-centric, zero trust security
+models, granular access controls, and embedded governance frameworks,
+reinforced by real-world incidents and regulatory pressures like the EU AI
+Act. The need for continuous monitoring, behavioral analysis, and
+organizational policy was repeatedly emphasized, underscoring that technical
+controls must be complemented by transparent governance and user education.
+
+Another recurring theme was the importance of user-centric design and
+operational transparency. Adoption and trust in agentic systems hinge on
+intuitive interfaces, clear feedback mechanisms, and adaptive autonomy models
+that keep humans in the loop for high-risk or judgment-driven actions. The
+summit showcased innovations in dynamic tool discovery, context management,
+and structured elicitation, which collectively reduce cognitive and
+computational overhead while improving agent performance and accountability.
+Open-source collaboration, exemplified by projects such as Goose,
+Skybridge, and the Agentic AI Foundation, is accelerating the
+standardization of best practices and democratizing access to advanced
+agentic capabilities.
+
+Despite significant technical advances—including stateless transport
+mechanisms, declarative agent modeling, and composable protocol
+extensions—the ecosystem faces ongoing challenges around specification
+compliance, fragmentation, and operational complexity. Only a fraction of MCP
+servers are considered production-ready, highlighting the need for
+disciplined engineering, rigorous conformance testing, and improved
+onboarding and observability. The summit called for the community to balance
+rapid experimentation with the discipline required for secure, reliable, and
+user-friendly deployments, and to address the “missing middle” between
+simple interfaces and full autonomy through progressive disclosure and
+context layering.
+
+In summary, the MCP Dev Summit NA 2026 reflected a community at an inflection
+point: scaling rapidly, tackling foundational security and interoperability
+challenges, and coalescing around best practices for secure, scalable,
+and user-aligned agent ecosystems. The path forward will require ongoing
+collaboration, adaptive governance, and continuous evaluation to realize the
+transformative potential of MCP-powered agentic AI, while safeguarding users
+and enterprises through transparent, resilient, and compliant practices.
