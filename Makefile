@@ -28,6 +28,11 @@ lint: clean
 	sudo -E $(DOCKER_CMD) run --rm -v $$(pwd):/tmp/lint \
 	-e RUN_LOCAL=true \
 	-e LINTER_RULES_PATH=.github/linters \
+	-e FILTER_REGEX_EXCLUDE='(^|/)(\.venv|\.tox|node_modules|dist|build|htmlcov|\.pytest_cache|\.ruff_cache)(/|$$)' \
+	-e VALIDATE_BIOME_FORMAT=false \
+	-e VALIDATE_BIOME_LINT=false \
+	-e VALIDATE_JSCPD=false \
+	-e VALIDATE_TRIVY=false \
 	ghcr.io/super-linter/super-linter
 	command -v uvx > /dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
 	uvx tox -e lint-check

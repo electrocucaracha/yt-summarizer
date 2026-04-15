@@ -23,7 +23,7 @@ It outlines best practices for leveraging Copilot to enhance productivity and ma
    - Document all Copilot-generated code to ensure maintainability.
    - Follow the project's documentation standards as outlined in the [CONTRIBUTING.md](../CONTRIBUTING.md) file.
    - All Markdown changes should use semantic line breaks for prose,
-     following SEMBR: https://sembr.org/
+     following SEMBR: <https://sembr.org/>
    - Preserve the structure of code fences, tables, YAML front matter, and concise list items unless a wrapped continuation clearly improves readability.
 
 5. **Security**:
