@@ -30,6 +30,8 @@ jobs:
           go-version: "^1.26"
           cache: false
       - uses: technote-space/create-pr-action@91114507cf92349bec0a9a501c2edf1635427bc5 # 2.1.4
+        env:
+          GITHUB_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}
         with:
           EXECUTE_COMMANDS: |
             ./ci/update_versions.sh
@@ -40,6 +42,7 @@ jobs:
   check-dockerfile:
     runs-on: ubuntu-latest
     permissions:
+      contents: write
       pull-requests: write
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
@@ -48,5 +51,5 @@ jobs:
       - name: update Dockerfile
         uses: ludeeus/dockerfile-updater@eaf8ea79220d076eb46c127fa9895e3de3e0a512 # 21.01.0
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.WORKFLOW_TOKEN }}
           pr_title: "chore: update Dockerfile"
