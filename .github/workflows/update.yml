@@ -31,7 +31,7 @@ jobs:
           cache: false
       - uses: technote-space/create-pr-action@91114507cf92349bec0a9a501c2edf1635427bc5 # 2.1.4
         env:
-          GITHUB_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.WORKFLOW_TOKEN }} # zizmor: ignore[secrets-outside-env]
         with:
           EXECUTE_COMMANDS: |
             ./ci/update_versions.sh
