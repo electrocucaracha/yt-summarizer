@@ -51,7 +51,7 @@ jobs:
           LINTER_RULES_PATH: .github/linters
           SAVE_SUPER_LINTER_OUTPUT: true
           KUBERNETES_KUBECONFORM_OPTIONS: "-ignore-missing-schemas"
-          FILTER_REGEX_EXCLUDE: "(^|/)(\\.venv|\\.tox|node_modules|dist|build|htmlcov|\\.pytest_cache|\\.ruff_cache)(/|$)"
+          FILTER_REGEX_EXCLUDE: "(^|/)(\\.venv|\\.tox|node_modules|dist|build|htmlcov|\\.pytest_cache|\\.ruff_cache|\\.mypy_cache)(/|$)"
           VALIDATE_BIOME_FORMAT: false
           VALIDATE_BIOME_LINT: false
           DEFAULT_BRANCH: ${{ github.head_ref || github.ref_name }}
