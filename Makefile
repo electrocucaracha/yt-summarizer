@@ -28,7 +28,7 @@ lint: clean
 	sudo -E $(DOCKER_CMD) run --rm -v $$(pwd):/tmp/lint \
 	-e RUN_LOCAL=true \
 	-e LINTER_RULES_PATH=.github/linters \
-	-e FILTER_REGEX_EXCLUDE='(^|/)(\.venv|\.tox|node_modules|dist|build|htmlcov|\.pytest_cache|\.ruff_cache)(/|$$)' \
+	-e FILTER_REGEX_EXCLUDE='(^|/)(\.venv|\.tox|node_modules|dist|build|htmlcov|\.pytest_cache|\.ruff_cache|\.mypy_cache)(/|$$)' \
 	-e VALIDATE_BIOME_FORMAT=false \
 	-e VALIDATE_BIOME_LINT=false \
 	-e VALIDATE_JSCPD=false \

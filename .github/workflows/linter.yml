@@ -45,13 +45,13 @@ jobs:
           persist-credentials: false
       - name: Run super-linter validation
         id: linter-validation
-        uses: super-linter/super-linter@61abc07d755095a68f4987d1c2c3d1d64408f1f9 # 8.5.0
+        uses: super-linter/super-linter@9e863354e3ff62e0727d37183162c4a88873df41 # 8.6.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           LINTER_RULES_PATH: .github/linters
           SAVE_SUPER_LINTER_OUTPUT: true
           KUBERNETES_KUBECONFORM_OPTIONS: "-ignore-missing-schemas"
-          FILTER_REGEX_EXCLUDE: "(^|/)(\\.venv|\\.tox|node_modules|dist|build|htmlcov|\\.pytest_cache|\\.ruff_cache)(/|$)"
+          FILTER_REGEX_EXCLUDE: "(^|/)(\\.venv|\\.tox|node_modules|dist|build|htmlcov|\\.pytest_cache|\\.ruff_cache|\\.mypy_cache)(/|$)"
           VALIDATE_BIOME_FORMAT: false
           VALIDATE_BIOME_LINT: false
           DEFAULT_BRANCH: ${{ github.head_ref || github.ref_name }}
@@ -105,7 +105,7 @@ jobs:
       - uses: jayqi/failed-build-issue-action@1a893bbf43ef1c2a8705e2b115cd4f0fe3c5649b # 1.2.0
         if: failure()
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ github.token }}
           title-template: "super-linter GitHub action has failed"
           label-name: super-linter-issue
           body-template: |
