@@ -48,5 +48,5 @@ jobs:
       - name: update Dockerfile
         uses: ludeeus/dockerfile-updater@eaf8ea79220d076eb46c127fa9895e3de3e0a512 # 21.01.0
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }} # zizmor: ignore[secrets-outside-env]
           pr_title: "chore: update Dockerfile"
