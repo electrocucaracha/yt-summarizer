@@ -33,7 +33,7 @@ lint: clean
 	-e VALIDATE_BIOME_LINT=false \
 	-e VALIDATE_JSCPD=false \
 	-e VALIDATE_TRIVY=false \
-	ghcr.io/super-linter/super-linter:v8.6.0
+	ghcr.io/super-linter/super-linter
 	command -v uvx > /dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
 	uvx tox -e lint-check
 	@echo "Lint complete!"

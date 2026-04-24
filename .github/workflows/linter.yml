@@ -105,7 +105,7 @@ jobs:
       - uses: jayqi/failed-build-issue-action@1a893bbf43ef1c2a8705e2b115cd4f0fe3c5649b # 1.2.0
         if: failure()
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }} # zizmor: ignore[secrets-outside-env]
+          github-token: ${{ github.token }}
           title-template: "super-linter GitHub action has failed"
           label-name: super-linter-issue
           body-template: |
