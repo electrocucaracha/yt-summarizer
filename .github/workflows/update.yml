@@ -51,7 +51,5 @@ jobs:
       - name: update Dockerfile
         uses: ludeeus/dockerfile-updater@eaf8ea79220d076eb46c127fa9895e3de3e0a512 # 21.01.0
         with:
-          token: ${{ env.WORKFLOW_TOKEN }}
-        env:
-          WORKFLOW_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}
+          token: ${{ secrets.WORKFLOW_TOKEN }} # zizmor: ignore[secrets-outside-env]
           pr_title: "chore: update Dockerfile"
