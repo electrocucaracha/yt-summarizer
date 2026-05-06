@@ -10,6 +10,7 @@ dependencies = [
     "beautifulsoup4",
     "litellm",
     "yt-dlp",
+    "googletrans",
 ]
 
 [project.optional-dependencies]
@@ -38,29 +39,29 @@ isolated_build = true
 
 [testenv]
 description = Run unit tests with pytest
-deps = 
+deps =
     pytest>=7.0
     pytest-mock>=3.10
     pytest-cov>=4.0
 extras = test
 setenv =
     PYTHONPATH = {toxinidir}/src
-commands = 
+commands =
     pytest --doctest-modules src/ {posargs:tests/}
 
 [testenv:coverage]
 description = Run tests with coverage reporting
-deps = 
+deps =
     pytest>=7.0
     pytest-mock>=3.10
     pytest-cov>=4.0
 extras = test
-commands = 
+commands =
     pytest --doctest-modules --cov=src/yt_summarizer --cov-report=html --cov-report=term-missing src/ tests/
 
 [testenv:lint]
 description = Fix code style
-deps = 
+deps =
     ruff
     black
     isort
@@ -76,7 +77,7 @@ commands =
 
 [testenv:lint-check]
 description = Check code style
-deps = 
+deps =
     ruff
     black
     isort
