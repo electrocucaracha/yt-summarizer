@@ -8,6 +8,9 @@
 ##############################################################################
 
 DOCKER_CMD ?= $(shell which docker 2> /dev/null || which podman 2> /dev/null || echo docker)
+GO_BIN ?= $(HOME)/go/bin
+SHFMT ?= $(or $(shell command -v shfmt 2> /dev/null),$(GO_BIN)/shfmt)
+YAMLFMT ?= $(or $(shell command -v yamlfmt 2> /dev/null),$(GO_BIN)/yamlfmt)
 
 help:
 	@echo "Available targets:"
@@ -40,10 +43,10 @@ lint: clean
 
 .PHONY: fmt
 fmt:
-	command -v shfmt > /dev/null || curl -s "https://i.jpillora.com/mvdan/sh!!?as=shfmt" | bash
-	shfmt -l -w -s -i 4 .
-	command -v yamlfmt > /dev/null || curl -s "https://i.jpillora.com/google/yamlfmt!!" | bash
-	yamlfmt -dstar **/*.{yaml,yml}
+	command -v shfmt > /dev/null || GOBIN=$(GO_BIN) go install mvdan.cc/sh/v3/cmd/shfmt@latest
+	$(SHFMT) -l -w -s -i 4 .
+	command -v yamlfmt > /dev/null || GOBIN=$(GO_BIN) go install github.com/google/yamlfmt/cmd/yamlfmt@latest
+	$(YAMLFMT) -dstar **/*.{yaml,yml}
 	command -v prettier > /dev/null || npm install prettier
 	npx prettier . --write
 	command -v uvx > /dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
