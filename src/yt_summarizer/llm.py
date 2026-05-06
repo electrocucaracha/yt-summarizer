@@ -91,7 +91,8 @@ class Client:
                     "in the transcript. "
                     f"Ensure the response is no longer than {TRANSCRIPT_SUMMARY_CHAR_LIMIT} "
                     "characters, "
-                    "including spaces. The summary must be in the same language as the input text.\n\n"
+                    "including spaces. "
+                    "The summary must be in the same language as the input text.\n\n"
                     f"{text}"
                 ),
             },

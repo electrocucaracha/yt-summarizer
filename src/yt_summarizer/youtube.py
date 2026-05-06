@@ -66,7 +66,7 @@ class Client:
             )
             self.ytt_api = YouTubeTranscriptApi(proxy_config=self.proxy_config)
 
-    def get_video_transcript(  # pylint: disable=too-many-return-statements
+    def get_video_transcript(  # pylint: disable=too-many-return-statements,too-many-branches
         self, url: str
     ) -> str:
         """Retrieve the transcript text for a YouTube video URL.
@@ -122,25 +122,24 @@ class Client:
         # Handle FetchedTranscript type
         if hasattr(transcript, "snippets"):
             try:
-                # Log the structure of the snippet object for debugging
-                for snippet in transcript.snippets:
+                snippets = list(transcript.snippets)
+                for snippet in snippets:
                     logger.debug("Snippet object structure: %s", snippet)
 
                 # Handle FetchedTranscriptSnippet objects properly
-                if hasattr(snippet, "text"):
-                    transcript_text = " ".join(
-                        snippet.text for snippet in transcript.snippets
-                    )
+                if snippets and hasattr(snippets[0], "text"):
+                    transcript_text = " ".join(s.text for s in snippets)
                 else:
+                    first = snippets[0] if snippets else None
                     logger.error(
                         "Unexpected snippet type: %s. Object details: %s",
-                        type(snippet),
-                        snippet,
+                        type(first),
+                        first,
                     )
                     raise TypeError("Unsupported snippet type encountered.")
                 logger.debug(
                     "Successfully processed FetchedTranscript with %d snippets",
-                    len(transcript.snippets),
+                    len(snippets),
                 )
                 return transcript_text
             except AttributeError as e:

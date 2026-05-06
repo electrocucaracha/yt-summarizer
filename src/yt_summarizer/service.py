@@ -53,7 +53,7 @@ class YouTubeSummarizerService:
         token: str,
         notion_db_id: str,
         model: str = "ollama/llama3.2",
-        api_base: str = "http://localhost:11434",
+        api_base: Optional[str] = None,
         proxy_username: Optional[str] = None,
         proxy_password: Optional[str] = None,
     ):
@@ -63,7 +63,7 @@ class YouTubeSummarizerService:
             token: Notion API authentication token.
             notion_db_id: The Notion database ID containing video records.
             model: LLM model identifier (default: ollama/llama3.2).
-            api_base: LLM API base URL (default: http://localhost:11434).
+            api_base: Optional LLM API base URL. Defaults to None (use provider default).
         """
         logger.debug("Initializing YouTube summarizer service")
 
@@ -163,11 +163,12 @@ class YouTubeSummarizerService:
         for attempt in range(1, retries + 1):
             try:
                 return fetch_function(*args, **kwargs)
-            except Exception as e:
+            except Exception as e:  # pylint: disable=broad-exception-caught
                 logger.warning("Attempt %d/%d failed: %s", attempt, retries, str(e))
                 if attempt == retries:
                     logger.error("All retry attempts failed.")
                     return None
+        return None
 
     def _process_video(self, video: YouTubeVideo) -> YouTubeVideo:
         """Populate missing title, summary, and main points for one video.
