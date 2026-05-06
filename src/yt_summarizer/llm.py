@@ -21,6 +21,7 @@ This module abstracts the complexity of LLM interactions for seamless integratio
 """
 
 import logging
+from typing import Optional
 
 import litellm
 
@@ -41,12 +42,12 @@ class Client:
     transcripts, including summarization and key point extraction.
     """
 
-    def __init__(self, model: str, api_base: str) -> None:
+    def __init__(self, model: str, api_base: Optional[str]) -> None:
         """Initialize LLM client with model and API configuration.
 
         Args:
             model: The model identifier (e.g., 'ollama/llama3.2', 'gpt-4').
-            api_base: The base URL for the LLM API (e.g., 'http://localhost:11434').
+            api_base: Optional base URL for the LLM API.
         """
         self.model = model
         self.api_base = api_base
@@ -78,7 +79,7 @@ class Client:
                     "Return only one well-written paragraph. "
                     f"The final output must not exceed {TRANSCRIPT_SUMMARY_CHAR_LIMIT} "
                     "characters, "
-                    "including spaces."
+                    "including spaces. The summary must be in the same language as the input text."
                 ),
             },
             {
@@ -90,7 +91,7 @@ class Client:
                     "in the transcript. "
                     f"Ensure the response is no longer than {TRANSCRIPT_SUMMARY_CHAR_LIMIT} "
                     "characters, "
-                    "including spaces.\n\n"
+                    "including spaces. The summary must be in the same language as the input text.\n\n"
                     f"{text}"
                 ),
             },
@@ -206,16 +207,24 @@ class Client:
     def _complete(self, messages: list[dict[str, str]], action: str) -> str:
         """Run a LiteLLM completion request and normalize connectivity failures."""
         try:
-            response = litellm.completion(
-                model=self.model,
-                messages=messages,
-                api_base=self.api_base,
-                temperature=0.1,
-                stream=False,
-            )
+            completion_kwargs = {
+                "model": self.model,
+                "messages": messages,
+                "temperature": 0.1,
+                "stream": False,
+            }
+            if self.api_base:
+                completion_kwargs["api_base"] = self.api_base
+
+            response = litellm.completion(**completion_kwargs)
         except litellm.exceptions.APIConnectionError as exc:
+            endpoint_description = (
+                f"'{self.api_base}'"
+                if self.api_base
+                else "the provider default endpoint"
+            )
             message = (
-                f"Unable to {action} because the LLM endpoint '{self.api_base}' "
+                f"Unable to {action} because the LLM endpoint {endpoint_description} "
                 f"for model '{self.model}' is unavailable. "
                 "Verify the service is running and reachable, then try again."
             )

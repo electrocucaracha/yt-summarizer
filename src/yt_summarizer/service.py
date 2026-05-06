@@ -104,35 +104,25 @@ class YouTubeSummarizerService:
         invalid_count = 0
 
         for i, prop in enumerate(properties, 1):
+            url = self._normalize_notion_text(prop.get("URL"))
             # Skip records without YouTube URLs
-            if not prop.get("URL"):
+            if not url:
                 logger.debug("Skipping record %d: No YouTube URL found", i)
                 invalid_count += 1
                 click.echo(f"Record {i} skipped: No YouTube URL found.")
                 continue
 
             valid_count += 1
-            # Ensure the URL is extracted correctly from rich text
-            url = prop["URL"]
-            if isinstance(url, list) and url:
-                first_item = url[0]
-                if isinstance(first_item, dict) and "text" in first_item:
-                    logger.debug("Extracting URL from rich text object: %s", first_item)
-                    url = first_item["text"].get("content", "")
-                else:
-                    logger.warning("Unexpected structure in URL list: %s", url)
-                    url = ""
-            elif not isinstance(url, str):
-                logger.warning("Unexpected URL type: %s", type(url))
-                url = ""
             logger.debug("Processing record %d with URL: %s", i, url)
             video = YouTubeVideo(
                 id=prop.get("ID", ""),
                 url=url,
-                title=prop.get("Title", None),
-                transcript=prop.get("Transcript", None),
-                summary=prop.get("Summary", None),
-                main_points=prop.get("Main points", None),
+                title=self._normalize_notion_text(prop.get("Title")),
+                transcript=self._normalize_notion_text(prop.get("Transcript")),
+                summary=self._normalize_notion_text(prop.get("Summary")),
+                main_points=self._normalize_notion_text(
+                    prop.get("Main points") or prop.get("Main Points")
+                ),
             )
             result.append(video)
             logger.debug("Added video: %s", video)
@@ -145,6 +135,39 @@ class YouTubeSummarizerService:
         logger.info("Successfully processed %d videos", len(result))
         logger.debug("Final videos list: %s", result)
         return result
+
+    def _normalize_notion_text(self, value) -> str:
+        """Convert Notion property payloads into plain strings."""
+        if value is None:
+            return ""
+        if isinstance(value, str):
+            return value.strip()
+        if isinstance(value, list):
+            parts = []
+            for item in value:
+                if not isinstance(item, dict):
+                    continue
+                plain_text = item.get("plain_text")
+                if plain_text:
+                    parts.append(str(plain_text))
+                    continue
+                text = item.get("text", {})
+                content = text.get("content") if isinstance(text, dict) else None
+                if content:
+                    parts.append(str(content))
+            return "".join(parts).strip()
+        return str(value).strip()
+
+    def _fetch_with_retries(self, fetch_function, *args, retries=3, **kwargs):
+        """Retry a function up to `retries` times before giving up."""
+        for attempt in range(1, retries + 1):
+            try:
+                return fetch_function(*args, **kwargs)
+            except Exception as e:
+                logger.warning("Attempt %d/%d failed: %s", attempt, retries, str(e))
+                if attempt == retries:
+                    logger.error("All retry attempts failed.")
+                    return None
 
     def _process_video(self, video: YouTubeVideo) -> YouTubeVideo:
         """Populate missing title, summary, and main points for one video.
@@ -165,30 +188,31 @@ class YouTubeSummarizerService:
         )  # Create a copy to avoid mutating the original object
 
         # Fetch missing metadata from YouTube
-        if not result.title:
+        if not result.title or result.title == "Title not found":
             logger.debug("Fetching missing metadata for video: %s", result.url)
-            if not result.title:
-                logger.debug("Fetching title for video: %s", result.url)
-                result.title = self.youtube_client.get_video_title(url=result.url)
+            result.title = self.youtube_client.get_video_title(url=result.url)
 
-        # Generate summary if not already present
         transcript = None
-        if not result.summary:
-            logger.info("Generating summary for video: %s", result.url)
-            transcript = self.youtube_client.get_video_transcript(url=result.url)
-            result.summary = self.llm_client.summarize(transcript)
-
-        # Extract main points if not already present
-        if not result.main_points:
-            logger.info("Extracting main points for video: %s", result.url)
-            # Fetch transcript if we didn't already fetch it for summary
-            if transcript is None:
-                transcript = self.youtube_client.get_video_transcript(url=result.url)
-            result.main_points = self.llm_client.get_main_points(transcript)
+        needs_transcript = not result.summary or not result.main_points
+        if needs_transcript:
+            transcript = self._fetch_with_retries(
+                self.youtube_client.get_video_transcript, url=result.url
+            )
+            if not transcript:
+                logger.warning(
+                    "Skipping video due to transcript fetch failure: %s", result.url
+                )
+            else:
+                if not result.summary:
+                    logger.info("Generating summary for video: %s", result.url)
+                    result.summary = self.llm_client.summarize(transcript)
+                if not result.main_points:
+                    logger.info("Extracting main points for video: %s", result.url)
+                    result.main_points = self.llm_client.get_main_points(transcript)
 
         return result
 
-    def upsert_video(self, video: YouTubeVideo):
+    def upsert_video(self, video: YouTubeVideo) -> YouTubeVideo:
         """Create or update a Notion row when derived video fields changed.
 
         The method enriches the supplied video, compares the before/after content
@@ -237,6 +261,8 @@ class YouTubeSummarizerService:
                 logger.error("Failed to update or create video in Notion: %s", e)
         else:
             logger.info("No changes detected for video: %s", video.url)
+
+        return updated_video
 
     def get_videos_from_playlist(self, playlist_url: str):
         """Extract playlist title and flat video metadata from a playlist URL.
@@ -354,7 +380,6 @@ class YouTubeSummarizerService:
         """
         logger.info("Generating executive summary for playlist")
 
-        # Normalize summaries to ensure they are strings
         summaries = [
             str(video.summary).strip()
             for video in videos
@@ -362,7 +387,6 @@ class YouTubeSummarizerService:
         ]
         logger.debug("Collected normalized summaries from videos: %s", summaries)
 
-        # Ensure summaries are not empty strings
         summaries = [summary for summary in summaries if summary]
         logger.debug("Filtered non-empty summaries: %s", summaries)
 
@@ -378,6 +402,7 @@ class YouTubeSummarizerService:
             combined_summary = self._reduce_playlist_summaries(
                 summaries, playlist_title=playlist_title
             )
+
         if len(combined_summary) > EXECUTIVE_SUMMARY_CHAR_LIMIT:
             combined_summary = (
                 combined_summary[: EXECUTIVE_SUMMARY_CHAR_LIMIT - 3] + "..."

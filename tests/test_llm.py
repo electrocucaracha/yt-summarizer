@@ -92,6 +92,30 @@ class TestLLMClient(unittest.TestCase):
         )
 
     @patch("yt_summarizer.llm.litellm.completion")
+    def test_summarize_includes_transcript_text(self, mock_completion):
+        """Summaries should be generated from the supplied transcript text."""
+        mock_completion.return_value = MagicMock(
+            choices=[MagicMock(message=MagicMock(content="ok"))]
+        )
+
+        self.client.summarize("Transcript text")
+
+        summary_messages = mock_completion.call_args.kwargs["messages"]
+        self.assertIn("Transcript text", summary_messages[1]["content"])
+
+    @patch("yt_summarizer.llm.litellm.completion")
+    def test_completion_omits_api_base_when_not_configured(self, mock_completion):
+        """Provider-native models should not be forced onto a custom base URL."""
+        mock_completion.return_value = MagicMock(
+            choices=[MagicMock(message=MagicMock(content="ok"))]
+        )
+        client = Client(model="github_copilot/gpt-4", api_base=None)
+
+        client.summarize("Transcript text")
+
+        self.assertNotIn("api_base", mock_completion.call_args.kwargs)
+
+    @patch("yt_summarizer.llm.litellm.completion")
     def test_summarize_and_main_points_prompts_use_updated_limits(
         self, mock_completion
     ):

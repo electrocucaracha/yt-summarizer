@@ -33,10 +33,12 @@ from youtube_transcript_api._errors import (
     NoTranscriptFound,
     TranscriptsDisabled,
     VideoUnavailable,
+    VideoUnplayable,
 )
 from youtube_transcript_api.proxies import WebshareProxyConfig
 
 logger = logging.getLogger(__name__)
+SUPPORTED_TRANSCRIPT_LANGUAGES = ("es", "es-419", "en", "en-US", "en-GB")
 
 
 class Client:
@@ -86,73 +88,91 @@ class Client:
         video_id = parse_qs(query)["v"][0]
 
         logger.info("Fetching transcript for video ID: %s", video_id)
-
+        logger.debug("Proxy configuration: %s", self.proxy_config)
         try:
-            transcript = self.ytt_api.fetch(video_id)
-
-            # Log the raw transcript structure for debugging
-            logger.debug("Raw transcript structure: %s", transcript)
-
-            # Handle FetchedTranscript type
-            if hasattr(transcript, "snippets"):
-                try:
-                    transcript_text = " ".join(
-                        snippet.text for snippet in transcript.snippets
-                    )
-                    logger.debug(
-                        "Successfully processed FetchedTranscript with %d snippets",
-                        len(transcript.snippets),
-                    )
-                    return transcript_text
-                except AttributeError as e:
-                    logger.error(
-                        "FetchedTranscript object is missing expected attributes: %s", e
-                    )
-
-            # Validate the structure of the transcript object
-            elif isinstance(transcript, list):
-                if all(
-                    isinstance(snippet, dict) and "text" in snippet
-                    for snippet in transcript
-                ):
-                    transcript_text = " ".join(
-                        snippet["text"] for snippet in transcript
-                    )
-                    logger.debug(
-                        "Successfully retrieved transcript with %d snippets",
-                        len(transcript),
-                    )
-                    return transcript_text
-                logger.error(
-                    "Transcript list contains invalid snippet structures: %s",
-                    [
-                        snippet
-                        for snippet in transcript
-                        if not isinstance(snippet, dict) or "text" not in snippet
-                    ],
-                )
-            else:
-                logger.error(
-                    "Unexpected transcript structure type: %s", type(transcript)
-                )
-                raise SystemExit("Critical error: Unexpected transcript structure.")
-
-            return ""
+            transcript = self.ytt_api.fetch(
+                video_id, languages=SUPPORTED_TRANSCRIPT_LANGUAGES
+            )
+            logger.debug("Transcript fetched successfully: %s", transcript)
         except AgeRestricted:
             logger.warning("Video is age-restricted and cannot fetch transcript.")
             return ""
         except NoTranscriptFound:
-            logger.warning("No transcript found for video ID: %s", video_id)
+            logger.warning(
+                "No transcript found for video ID %s in preferred languages %s",
+                video_id,
+                SUPPORTED_TRANSCRIPT_LANGUAGES,
+            )
             return ""
         except TranscriptsDisabled:
             logger.warning("Transcripts are disabled for video ID: %s", video_id)
             return ""
-        except VideoUnavailable:
-            logger.warning("Video is unavailable or deleted: %s", video_id)
+        except (VideoUnavailable, VideoUnplayable):
+            logger.warning("Video is unavailable or unplayable: %s", video_id)
             return ""
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.error("Failed to fetch transcript for video ID %s: %s", video_id, e)
-            return ""
+        except Exception as e:
+            logger.error(
+                "Error fetching transcript for video ID %s: %s", video_id, str(e)
+            )
+            raise
+
+        # Log the raw transcript structure for debugging
+        logger.debug("Raw transcript structure: %s", transcript)
+
+        # Handle FetchedTranscript type
+        if hasattr(transcript, "snippets"):
+            try:
+                # Log the structure of the snippet object for debugging
+                for snippet in transcript.snippets:
+                    logger.debug("Snippet object structure: %s", snippet)
+
+                # Handle FetchedTranscriptSnippet objects properly
+                if hasattr(snippet, "text"):
+                    transcript_text = " ".join(
+                        snippet.text for snippet in transcript.snippets
+                    )
+                else:
+                    logger.error(
+                        "Unexpected snippet type: %s. Object details: %s",
+                        type(snippet),
+                        snippet,
+                    )
+                    raise TypeError("Unsupported snippet type encountered.")
+                logger.debug(
+                    "Successfully processed FetchedTranscript with %d snippets",
+                    len(transcript.snippets),
+                )
+                return transcript_text
+            except AttributeError as e:
+                logger.error(
+                    "FetchedTranscript object is missing expected attributes: %s", e
+                )
+
+        # Validate the structure of the transcript object
+        elif isinstance(transcript, list):
+            if all(
+                isinstance(snippet, dict) and "text" in snippet
+                for snippet in transcript
+            ):
+                transcript_text = " ".join(snippet["text"] for snippet in transcript)
+                logger.debug(
+                    "Successfully retrieved transcript with %d snippets",
+                    len(transcript),
+                )
+                return transcript_text
+            logger.error(
+                "Transcript list contains invalid snippet structures: %s",
+                [
+                    snippet
+                    for snippet in transcript
+                    if not isinstance(snippet, dict) or "text" not in snippet
+                ],
+            )
+        else:
+            logger.error("Unexpected transcript structure type: %s", type(transcript))
+            raise SystemExit("Critical error: Unexpected transcript structure.")
+
+        return ""
 
     def get_video_title(self, url: str) -> str:
         """Extract the video title from the YouTube page.

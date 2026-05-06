@@ -119,6 +119,51 @@ class TestYouTubeSummarizerService(unittest.TestCase):
         self.assertEqual(EXECUTIVE_SUMMARY_CHAR_LIMIT, len(result))
         self.assertTrue(result.endswith("..."))
 
+    def test_get_videos_from_notion_db_normalizes_rich_text_fields(self):
+        """Notion rich text payloads should be converted into plain strings."""
+        self.service.notion_client = MagicMock()
+        self.service.notion_client.get_page_properties_from_database.return_value = [
+            {
+                "ID": "page-1",
+                "URL": [
+                    {
+                        "type": "text",
+                        "text": {"content": "https://example.com/video"},
+                        "plain_text": "https://example.com/video",
+                    }
+                ],
+                "Title": [
+                    {
+                        "type": "text",
+                        "text": {"content": "Example title"},
+                        "plain_text": "Example title",
+                    }
+                ],
+                "Summary": [
+                    {
+                        "type": "text",
+                        "text": {"content": "Example summary"},
+                        "plain_text": "Example summary",
+                    }
+                ],
+                "Main points": [
+                    {
+                        "type": "text",
+                        "text": {"content": "- point"},
+                        "plain_text": "- point",
+                    }
+                ],
+            }
+        ]
+
+        videos = self.service.get_videos_from_notion_db()
+
+        self.assertEqual(1, len(videos))
+        self.assertEqual("https://example.com/video", videos[0].url)
+        self.assertEqual("Example title", videos[0].title)
+        self.assertEqual("Example summary", videos[0].summary)
+        self.assertEqual("- point", videos[0].main_points)
+
 
 if __name__ == "__main__":
     unittest.main()

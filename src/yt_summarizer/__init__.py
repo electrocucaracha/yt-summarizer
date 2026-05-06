@@ -30,6 +30,7 @@ from logging.handlers import RotatingFileHandler
 import click
 import click_spinner
 import litellm
+from click.core import ParameterSource
 
 from .llm import LLMConnectionError
 from .service import YouTubeSummarizerService
@@ -180,6 +181,23 @@ def _process_playlist(service, playlist_url: str, videos: dict, logger) -> str:
     return playlist_title
 
 
+def _resolve_api_base(
+    model: str,
+    api_base: str | None,
+    api_base_source: ParameterSource | None = None,
+) -> str | None:
+    """Resolve the effective API base for the selected model."""
+    if (
+        api_base
+        and (not model.startswith("github_copilot/"))
+        or api_base_source == ParameterSource.COMMANDLINE
+    ):
+        return api_base
+    if model.startswith("github_copilot/"):
+        return None
+    return "http://localhost:11434"
+
+
 @click.command()
 @click.option("--notion-db-id", envvar="NOTION_DATABASE_ID")
 @click.option(
@@ -189,7 +207,7 @@ def _process_playlist(service, playlist_url: str, videos: dict, logger) -> str:
     help="Path to file containing Notion API token",
 )
 @click.option("--model", default="ollama/llama3.2", envvar="LLM_MODEL")
-@click.option("--api-base", default="http://localhost:11434", envvar="LLM_API_BASE")
+@click.option("--api-base", default=None, envvar="LLM_API_BASE")
 @click.option(
     "--log-level",
     default="INFO",
@@ -215,7 +233,7 @@ def cli(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     notion_db_id: str,
     notion_token_file: str,
     model: str,
-    api_base: str,
+    api_base: str | None,
     log_level: str,
     playlist_url: str,
     proxy_username: str,
@@ -235,8 +253,8 @@ def cli(  # pylint: disable=too-many-arguments,too-many-positional-arguments
             environment variable, or use NOTION_TOKEN env var to override.
         model: The LLM model identifier (default: ollama/llama3.2).
             Can be set via LLM_MODEL environment variable.
-        api_base: The LLM API base URL (default: http://localhost:11434).
-            Can be set via LLM_API_BASE environment variable.
+        api_base: Optional LLM API base URL. Defaults to the provider endpoint
+            for GitHub Copilot models and to http://localhost:11434 otherwise.
         log_level: The logging level (default: INFO).
             Can be DEBUG, INFO, WARNING, ERROR, or CRITICAL.
 
@@ -256,13 +274,21 @@ def cli(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     )
 
     logger = logging.getLogger(__name__)
+    context = click.get_current_context(silent=True)
+    effective_api_base = _resolve_api_base(
+        model,
+        api_base,
+        api_base_source=(
+            context.get_parameter_source("api_base") if context is not None else None
+        ),
+    )
     logger.debug("Starting YouTube summarizer with log level: %s", log_level)
     logger.info("Using model: %s", model)
-    logger.info("Using API base: %s", api_base)
+    logger.info("Using API base: %s", effective_api_base or "provider default")
 
     click.echo("Starting YouTube summarizer...")
     click.echo(f"Using model: {model}")
-    click.echo(f"Using API base: {api_base}")
+    click.echo(f"Using API base: {effective_api_base or 'provider default'}")
 
     completed_successfully = False
     playlist_title = None
@@ -283,7 +309,7 @@ def cli(  # pylint: disable=too-many-arguments,too-many-positional-arguments
             notion_db_id=notion_db_id,
             token=token,
             model=model,
-            api_base=api_base,
+            api_base=effective_api_base,
             proxy_username=proxy_username,
             proxy_password=proxy_password,
         )
@@ -308,8 +334,16 @@ def cli(  # pylint: disable=too-many-arguments,too-many-positional-arguments
             ) as progress_iter:
                 for url, video in progress_iter:
                     logger.info("Processing and storing the video: %s", url)
-                    service.upsert_video(video)
+                    videos[url] = service.upsert_video(video)
         completed_successfully = True
+        click.echo("Generating executive summary...")
+        with _suppress_litellm_output():
+            with click_spinner.spinner():
+                playlist_summary = service.generate_playlist_summary(
+                    list(videos.values()), playlist_title=playlist_title
+                )
+        click.echo("\nExecutive Summary of the Playlist:")
+        click.echo(playlist_summary)
     except LLMConnectionError as exc:
         logger.error("LLM endpoint is unavailable: %s", str(exc))
         click.echo(f"LLM connection error: {exc}", err=True)
@@ -323,13 +357,3 @@ def cli(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         logger.info("Application terminated.")
         if completed_successfully:
             click.echo("YouTube summarizer has completed.")
-
-        # Generate and print the executive summary for the playlist
-        click.echo("Generating executive summary...")
-        with _suppress_litellm_output():
-            with click_spinner.spinner():
-                playlist_summary = service.generate_playlist_summary(
-                    list(videos.values()), playlist_title=playlist_title
-                )
-        click.echo("\nExecutive Summary of the Playlist:")
-        click.echo(playlist_summary)
