@@ -5,8 +5,14 @@ import unittest
 from unittest.mock import patch
 
 import litellm
+from click.core import ParameterSource
 
-from yt_summarizer import LLMConnectionError, _suppress_litellm_output, cli
+from yt_summarizer import (
+    LLMConnectionError,
+    _resolve_api_base,
+    _suppress_litellm_output,
+    cli,
+)
 from yt_summarizer.model import YouTubeVideo
 
 
@@ -44,6 +50,7 @@ class TestCli(unittest.TestCase):
         mock_service = mock_service_cls.return_value
         mock_service.get_videos_from_notion_db.return_value = [notion_video]
         mock_service.get_videos_from_playlist.return_value = []
+        mock_service.upsert_video.side_effect = lambda video: video
 
         progressbar_calls = []
 
@@ -134,10 +141,7 @@ class TestCli(unittest.TestCase):
             )
         )
         self.assertNotIn("YouTube summarizer has completed.", echo_messages)
-        mock_service.generate_playlist_summary.assert_called_once_with(
-            [notion_video], playlist_title=None
-        )
-        self.assertIn("Generating executive summary...", echo_messages)
+        mock_service.generate_playlist_summary.assert_not_called()
 
     @patch("yt_summarizer.logging.basicConfig")
     @patch("yt_summarizer._read_token_from_file", return_value="mock_token")
@@ -161,6 +165,7 @@ class TestCli(unittest.TestCase):
             "title": "Platform Engineering Weekly",
             "videos": [playlist_video],
         }
+        mock_service.upsert_video.side_effect = lambda video: video
         mock_progressbar.side_effect = lambda iterable, **kwargs: _FakeProgressBar(
             list(iterable)
         )
@@ -179,6 +184,28 @@ class TestCli(unittest.TestCase):
         mock_service.generate_playlist_summary.assert_called_once_with(
             [notion_video, playlist_video],
             playlist_title="Platform Engineering Weekly",
+        )
+
+    def test_resolve_api_base_uses_provider_default_for_github_copilot(self):
+        """GitHub Copilot models should not inherit the Ollama default base URL."""
+        self.assertIsNone(_resolve_api_base("github_copilot/gpt-4", None))
+        self.assertIsNone(
+            _resolve_api_base(
+                "github_copilot/gpt-4",
+                "http://example.invalid",
+                api_base_source=ParameterSource.ENVIRONMENT,
+            )
+        )
+        self.assertEqual(
+            "http://example.invalid",
+            _resolve_api_base(
+                "github_copilot/gpt-4",
+                "http://example.invalid",
+                api_base_source=ParameterSource.COMMANDLINE,
+            ),
+        )
+        self.assertEqual(
+            "http://localhost:11434", _resolve_api_base("ollama/llama3.2", None)
         )
 
     def test_suppress_litellm_output_restores_logger_and_flag_state(self):
