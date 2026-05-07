@@ -66,7 +66,7 @@ class Client:
             )
             self.ytt_api = YouTubeTranscriptApi(proxy_config=self.proxy_config)
 
-    def get_video_transcript(  # pylint: disable=too-many-return-statements
+    def get_video_transcript(  # pylint: disable=too-many-return-statements,too-many-branches
         self, url: str
     ) -> str:
         """Retrieve the transcript text for a YouTube video URL.
@@ -122,25 +122,30 @@ class Client:
         # Handle FetchedTranscript type
         if hasattr(transcript, "snippets"):
             try:
-                # Log the structure of the snippet object for debugging
+                processed_snippet_count = 0
+                transcript_parts = []
+
                 for snippet in transcript.snippets:
                     logger.debug("Snippet object structure: %s", snippet)
+                    if not hasattr(snippet, "text"):
+                        logger.error(
+                            "Unexpected snippet type: %s. Object details: %s",
+                            type(snippet),
+                            snippet,
+                        )
+                        raise TypeError("Unsupported snippet type encountered.")
+                    transcript_parts.append(snippet.text)
+                    processed_snippet_count += 1
 
                 # Handle FetchedTranscriptSnippet objects properly
-                if hasattr(snippet, "text"):
-                    transcript_text = " ".join(
-                        snippet.text for snippet in transcript.snippets
-                    )
+                if transcript_parts:
+                    transcript_text = " ".join(transcript_parts)
                 else:
-                    logger.error(
-                        "Unexpected snippet type: %s. Object details: %s",
-                        type(snippet),
-                        snippet,
-                    )
-                    raise TypeError("Unsupported snippet type encountered.")
+                    logger.error("FetchedTranscript did not contain any snippets.")
+                    raise TypeError("FetchedTranscript contains no snippets.")
                 logger.debug(
                     "Successfully processed FetchedTranscript with %d snippets",
-                    len(transcript.snippets),
+                    processed_snippet_count,
                 )
                 return transcript_text
             except AttributeError as e:
