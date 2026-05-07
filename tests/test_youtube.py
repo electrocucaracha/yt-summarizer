@@ -28,9 +28,11 @@ class TestYouTubeClient(unittest.TestCase):
     def test_get_transcript_from_snippet_iterator(self, mock_fetch):
         """Test that fetched transcript snippets are processed in a single pass."""
         mock_fetch.return_value = SimpleNamespace(
-            snippets=(
-                SimpleNamespace(text="Sample"),
-                SimpleNamespace(text="text"),
+            snippets=iter(
+                (
+                    SimpleNamespace(text="Sample"),
+                    SimpleNamespace(text="text"),
+                )
             )
         )
 
@@ -44,7 +46,7 @@ class TestYouTubeClient(unittest.TestCase):
     def test_get_transcript_from_invalid_snippet_iterator_raises(self, mock_fetch):
         """Test that invalid fetched transcript snippets raise a TypeError."""
         mock_fetch.return_value = SimpleNamespace(
-            snippets=(SimpleNamespace(duration=5),)
+            snippets=iter((SimpleNamespace(duration=5),))
         )
 
         with self.assertRaisesRegex(TypeError, "Unsupported snippet type encountered."):
