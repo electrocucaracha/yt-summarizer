@@ -48,6 +48,27 @@ class TestYouTubeClient(unittest.TestCase):
 
         self.assertEqual(transcript, "Sample text")
 
+    @patch("yt_summarizer.youtube.YouTubeTranscriptApi.fetch")
+    def test_get_transcript_from_invalid_snippet_iterator_raises(self, mock_fetch):
+        """Test that invalid fetched transcript snippets raise a TypeError."""
+
+        class InvalidSnippet:
+            """Minimal invalid snippet fixture."""
+
+            duration = 5
+
+        class Transcript:
+            """Minimal transcript fixture."""
+
+            @property
+            def snippets(self):
+                return iter((InvalidSnippet(),))
+
+        mock_fetch.return_value = Transcript()
+
+        with self.assertRaisesRegex(TypeError, "Unsupported snippet type encountered."):
+            self.client.get_video_transcript("https://youtube.com/watch?v=mock_id")
+
 
 if __name__ == "__main__":
     unittest.main()

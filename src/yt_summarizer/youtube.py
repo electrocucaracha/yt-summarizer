@@ -142,7 +142,7 @@ class Client:
                     transcript_text = " ".join(transcript_parts)
                 else:
                     logger.error("FetchedTranscript did not contain any snippets.")
-                    raise TypeError("Unsupported snippet type encountered.")
+                    raise TypeError("FetchedTranscript contains no snippets.")
                 logger.debug(
                     "Successfully processed FetchedTranscript with %d snippets",
                     snippet_count,
