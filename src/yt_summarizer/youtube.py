@@ -122,13 +122,10 @@ class Client:
         # Handle FetchedTranscript type
         if hasattr(transcript, "snippets"):
             try:
-                first = None
                 snippet_count = 0
                 transcript_parts = []
 
                 for snippet in transcript.snippets:
-                    if first is None:
-                        first = snippet
                     logger.debug("Snippet object structure: %s", snippet)
                     if not hasattr(snippet, "text"):
                         logger.error(
@@ -144,11 +141,7 @@ class Client:
                 if transcript_parts:
                     transcript_text = " ".join(transcript_parts)
                 else:
-                    logger.error(
-                        "Unexpected snippet type: %s. Object details: %s",
-                        type(first),
-                        first,
-                    )
+                    logger.error("FetchedTranscript did not contain any snippets.")
                     raise TypeError("Unsupported snippet type encountered.")
                 logger.debug(
                     "Successfully processed FetchedTranscript with %d snippets",
