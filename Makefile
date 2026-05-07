@@ -43,9 +43,9 @@ lint: clean
 
 .PHONY: fmt
 fmt:
-	command -v shfmt > /dev/null || GOBIN=$(GO_BIN) go install mvdan.cc/sh/v3/cmd/shfmt@latest
+	[ -x "$(SHFMT)" ] || GOBIN=$(GO_BIN) go install mvdan.cc/sh/v3/cmd/shfmt@latest
 	$(SHFMT) -l -w -s -i 4 .
-	command -v yamlfmt > /dev/null || GOBIN=$(GO_BIN) go install github.com/google/yamlfmt/cmd/yamlfmt@latest
+	[ -x "$(YAMLFMT)" ] || GOBIN=$(GO_BIN) go install github.com/google/yamlfmt/cmd/yamlfmt@latest
 	$(YAMLFMT) -dstar **/*.{yaml,yml}
 	command -v prettier > /dev/null || npm install prettier
 	npx prettier . --write
