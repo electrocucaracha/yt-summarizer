@@ -23,6 +23,31 @@ class TestYouTubeClient(unittest.TestCase):
         )
         self.assertEqual(transcript, "Sample text")
 
+    @patch("yt_summarizer.youtube.YouTubeTranscriptApi.fetch")
+    def test_get_transcript_from_snippet_iterator(self, mock_fetch):
+        """Test that fetched transcript snippets are processed in a single pass."""
+
+        class Snippet:
+            """Minimal snippet fixture."""
+
+            def __init__(self, text):
+                self.text = text
+
+        class Transcript:
+            """Minimal transcript fixture."""
+
+            @property
+            def snippets(self):
+                return iter((Snippet("Sample"), Snippet("text")))
+
+        mock_fetch.return_value = Transcript()
+
+        transcript = self.client.get_video_transcript(
+            "https://youtube.com/watch?v=mock_id"
+        )
+
+        self.assertEqual(transcript, "Sample text")
+
 
 if __name__ == "__main__":
     unittest.main()

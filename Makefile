@@ -9,6 +9,8 @@
 
 DOCKER_CMD ?= $(shell which docker 2> /dev/null || which podman 2> /dev/null || echo docker)
 GO_BIN ?= $(HOME)/go/bin
+SHFMT_VERSION ?= v3.13.1
+YAMLFMT_VERSION ?= v0.21.0
 SHFMT ?= $(or $(shell command -v shfmt 2> /dev/null),$(GO_BIN)/shfmt)
 YAMLFMT ?= $(or $(shell command -v yamlfmt 2> /dev/null),$(GO_BIN)/yamlfmt)
 
@@ -43,9 +45,9 @@ lint: clean
 
 .PHONY: fmt
 fmt:
-	[ -x "$(SHFMT)" ] || GOBIN=$(GO_BIN) go install mvdan.cc/sh/v3/cmd/shfmt@latest
+	[ -x "$(SHFMT)" ] || GOBIN=$(GO_BIN) go install mvdan.cc/sh/v3/cmd/shfmt@$(SHFMT_VERSION)
 	$(SHFMT) -l -w -s -i 4 .
-	[ -x "$(YAMLFMT)" ] || GOBIN=$(GO_BIN) go install github.com/google/yamlfmt/cmd/yamlfmt@latest
+	[ -x "$(YAMLFMT)" ] || GOBIN=$(GO_BIN) go install github.com/google/yamlfmt/cmd/yamlfmt@$(YAMLFMT_VERSION)
 	$(YAMLFMT) -dstar **/*.{yaml,yml}
 	command -v prettier > /dev/null || npm install prettier
 	npx prettier . --write

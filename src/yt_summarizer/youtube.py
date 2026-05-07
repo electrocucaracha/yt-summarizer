@@ -122,15 +122,28 @@ class Client:
         # Handle FetchedTranscript type
         if hasattr(transcript, "snippets"):
             try:
-                snippets = list(transcript.snippets)
-                for snippet in snippets:
+                first = None
+                snippet_count = 0
+                transcript_parts = []
+
+                for snippet in transcript.snippets:
+                    if first is None:
+                        first = snippet
                     logger.debug("Snippet object structure: %s", snippet)
+                    if not hasattr(snippet, "text"):
+                        logger.error(
+                            "Unexpected snippet type: %s. Object details: %s",
+                            type(snippet),
+                            snippet,
+                        )
+                        raise TypeError("Unsupported snippet type encountered.")
+                    transcript_parts.append(snippet.text)
+                    snippet_count += 1
 
                 # Handle FetchedTranscriptSnippet objects properly
-                if snippets and hasattr(snippets[0], "text"):
-                    transcript_text = " ".join(s.text for s in snippets)
+                if transcript_parts:
+                    transcript_text = " ".join(transcript_parts)
                 else:
-                    first = snippets[0] if snippets else None
                     logger.error(
                         "Unexpected snippet type: %s. Object details: %s",
                         type(first),
@@ -139,7 +152,7 @@ class Client:
                     raise TypeError("Unsupported snippet type encountered.")
                 logger.debug(
                     "Successfully processed FetchedTranscript with %d snippets",
-                    len(snippets),
+                    snippet_count,
                 )
                 return transcript_text
             except AttributeError as e:
