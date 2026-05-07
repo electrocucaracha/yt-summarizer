@@ -1,33 +1,10 @@
 """Tests for the YouTube client module."""
 
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from yt_summarizer.youtube import Client
-
-
-class Snippet:
-    """Minimal valid snippet fixture."""
-
-    def __init__(self, text):
-        self.text = text
-
-
-class InvalidSnippet:
-    """Minimal invalid snippet fixture."""
-
-    duration = 5
-
-
-class Transcript:
-    """Minimal transcript fixture."""
-
-    def __init__(self, snippets):
-        self._snippets = snippets
-
-    @property
-    def snippets(self):
-        return iter(self._snippets)
 
 
 class TestYouTubeClient(unittest.TestCase):
@@ -50,7 +27,12 @@ class TestYouTubeClient(unittest.TestCase):
     @patch("yt_summarizer.youtube.YouTubeTranscriptApi.fetch")
     def test_get_transcript_from_snippet_iterator(self, mock_fetch):
         """Test that fetched transcript snippets are processed in a single pass."""
-        mock_fetch.return_value = Transcript((Snippet("Sample"), Snippet("text")))
+        mock_fetch.return_value = SimpleNamespace(
+            snippets=(
+                SimpleNamespace(text="Sample"),
+                SimpleNamespace(text="text"),
+            )
+        )
 
         transcript = self.client.get_video_transcript(
             "https://youtube.com/watch?v=mock_id"
@@ -61,7 +43,9 @@ class TestYouTubeClient(unittest.TestCase):
     @patch("yt_summarizer.youtube.YouTubeTranscriptApi.fetch")
     def test_get_transcript_from_invalid_snippet_iterator_raises(self, mock_fetch):
         """Test that invalid fetched transcript snippets raise a TypeError."""
-        mock_fetch.return_value = Transcript((InvalidSnippet(),))
+        mock_fetch.return_value = SimpleNamespace(
+            snippets=(SimpleNamespace(duration=5),)
+        )
 
         with self.assertRaisesRegex(TypeError, "Unsupported snippet type encountered."):
             self.client.get_video_transcript("https://youtube.com/watch?v=mock_id")
