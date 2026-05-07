@@ -51,6 +51,9 @@ jobs:
           LINTER_RULES_PATH: .github/linters
           SAVE_SUPER_LINTER_OUTPUT: true
           KUBERNETES_KUBECONFORM_OPTIONS: "-ignore-missing-schemas"
+          # Trivy does its own filesystem traversal and does not use FILTER_REGEX_EXCLUDE,
+          # so .mypy_cache must be skipped here separately to avoid dangling-symlink errors.
+          TRIVY_SKIP_DIRS: ".mypy_cache"
           FILTER_REGEX_EXCLUDE: "(^|/)(\\.venv|\\.tox|node_modules|dist|build|htmlcov|\\.pytest_cache|\\.ruff_cache|\\.mypy_cache)(/|$)"
           VALIDATE_BIOME_FORMAT: false
           VALIDATE_BIOME_LINT: false
