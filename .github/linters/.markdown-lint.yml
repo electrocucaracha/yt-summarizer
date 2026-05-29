@@ -6,7 +6,6 @@
 # which accompanies this distribution, and is available at
 # http://www.apache.org/licenses/LICENSE-2.0
 ##############################################################################
-
 MD013:
   line_length: 400 # Line length; markdownlint default of 80 is too short
 MD024:
