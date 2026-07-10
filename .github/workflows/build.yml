@@ -32,7 +32,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # 8.2.0
+        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # 8.3.2
         with:
           enable-cache: false
       - name: Set up Python
@@ -56,7 +56,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Log in to the Container registry
-        uses: docker/login-action@c99871dec2022cc055c062a10cc1a1310835ceb4 # 4.3.0
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # 4.4.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
