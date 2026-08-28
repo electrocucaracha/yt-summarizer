@@ -33,6 +33,7 @@ import litellm
 from click.core import ParameterSource
 
 from .llm import LLMConnectionError
+from .okf import DEFAULT_ROOT as DEFAULT_OUTPUT_DIR
 from .service import YouTubeSummarizerService
 
 
@@ -206,6 +207,15 @@ def _resolve_api_base(
     envvar="NOTION_TOKEN_FILE",
     help="Path to file containing Notion API token",
 )
+@click.option(
+    "--output-dir",
+    default=None,
+    envvar="OUTPUT_DIR",
+    help=(
+        "Root folder of the OKF bundle (https://okf.md/spec/) where summaries are "
+        "stored. Defaults to 'docs' when no Notion database is configured."
+    ),
+)
 @click.option("--model", default="ollama/llama3.2", envvar="LLM_MODEL")
 @click.option("--api-base", default=None, envvar="LLM_API_BASE")
 @click.option(
@@ -232,6 +242,7 @@ def _resolve_api_base(
 def cli(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     notion_db_id: str,
     notion_token_file: str,
+    output_dir: str | None,
     model: str,
     api_base: str | None,
     log_level: str,
@@ -241,16 +252,19 @@ def cli(  # pylint: disable=too-many-arguments,too-many-positional-arguments
 ):
     """Main CLI entry point for the YouTube summarizer.
 
-    Retrieves videos from a Notion database, extracts transcripts and metadata,
-    generates summaries and key points using an LLM, and updates the database
-    with the results.
+    Retrieves videos from a Notion database and/or a local OKF bundle, extracts
+    transcripts and metadata, generates summaries and key points using an LLM,
+    and writes the results back to every configured storage backend.
 
     Args:
-        notion_db_id: The Notion database ID containing videos to process.
+        notion_db_id: Optional Notion database ID containing videos to process.
             Can be provided as --notion-db-id flag or NOTION_DATABASE_ID env var.
+            When omitted, results are stored on the filesystem only.
         notion_token_file: Path to file containing Notion API token
             (default: /etc/notion/secrets.txt). Can be set via NOTION_TOKEN_FILE
             environment variable, or use NOTION_TOKEN env var to override.
+        output_dir: Root folder of the OKF bundle to write. Defaults to "docs"
+            when no Notion database is configured.
         model: The LLM model identifier (default: ollama/llama3.2).
             Can be set via LLM_MODEL environment variable.
         api_base: Optional LLM API base URL. Defaults to the provider endpoint
@@ -293,15 +307,25 @@ def cli(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     completed_successfully = False
     playlist_title = None
     try:
-        # Get token from environment variable or read from file
-        if "NOTION_TOKEN" in os.environ:
-            token = os.environ["NOTION_TOKEN"]
-            logger.debug("Using Notion token from NOTION_TOKEN environment variable")
-            click.echo("Using Notion token from environment variable.")
+        token = None
+        if notion_db_id:
+            # Get token from environment variable or read from file
+            if "NOTION_TOKEN" in os.environ:
+                token = os.environ["NOTION_TOKEN"]
+                logger.debug(
+                    "Using Notion token from NOTION_TOKEN environment variable"
+                )
+                click.echo("Using Notion token from environment variable.")
+            else:
+                token = _read_token_from_file(notion_token_file)
+                logger.debug("Loaded Notion token from file: %s", notion_token_file)
+                click.echo("Loaded Notion token from file.")
         else:
-            token = _read_token_from_file(notion_token_file)
-            logger.debug("Loaded Notion token from file: %s", notion_token_file)
-            click.echo("Loaded Notion token from file.")
+            output_dir = output_dir or DEFAULT_OUTPUT_DIR
+            click.echo("Notion is not configured; storing results on the filesystem.")
+
+        if output_dir:
+            click.echo(f"Storing results in the OKF bundle at: {output_dir}")
 
         # Initialize the summarizer service
         click.echo("Initializing YouTube summarizer service...")
@@ -312,36 +336,47 @@ def cli(  # pylint: disable=too-many-arguments,too-many-positional-arguments
             api_base=effective_api_base,
             proxy_username=proxy_username,
             proxy_password=proxy_password,
+            output_dir=output_dir,
         )
 
         videos = {}
-        click.echo("Fetching videos from Notion database...")
-        with click_spinner.spinner():
-            for page in service.get_videos_from_notion_db():
-                logger.info("Fetching page: %s", page.url)
-                videos[page.url] = page
+        if notion_db_id:
+            click.echo("Fetching videos from Notion database...")
+            with click_spinner.spinner():
+                for page in service.get_videos_from_notion_db():
+                    logger.info("Fetching page: %s", page.url)
+                    videos[page.url] = page
 
         # Process the playlist if provided
         if playlist_url:
             playlist_title = _process_playlist(service, playlist_url, videos, logger)
 
+        if output_dir:
+            click.echo("Fetching videos already stored on the filesystem...")
+            for stored in service.get_videos_from_filesystem(playlist_title):
+                videos.setdefault(stored.url, stored)
+
         # Process videos with progress bar
-        with _suppress_litellm_output():
-            with click.progressbar(
-                videos.items(),
-                label="Processing videos",
-                item_show_func=_progress_item_label,
-            ) as progress_iter:
-                for url, video in progress_iter:
-                    logger.info("Processing and storing the video: %s", url)
-                    videos[url] = service.upsert_video(video)
+        with _suppress_litellm_output(), click.progressbar(
+            videos.items(),
+            label="Processing videos",
+            item_show_func=_progress_item_label,
+        ) as progress_iter:
+            for url, video in progress_iter:
+                logger.info("Processing and storing the video: %s", url)
+                videos[url] = service.upsert_video(video, playlist_title=playlist_title)
         completed_successfully = True
         click.echo("Generating executive summary...")
-        with _suppress_litellm_output():
-            with click_spinner.spinner():
-                playlist_summary = service.generate_playlist_summary(
-                    list(videos.values()), playlist_title=playlist_title
-                )
+        with _suppress_litellm_output(), click_spinner.spinner():
+            playlist_summary = service.generate_playlist_summary(
+                list(videos.values()), playlist_title=playlist_title
+            )
+        service.store_playlist(
+            list(videos.values()),
+            playlist_title=playlist_title,
+            playlist_summary=playlist_summary,
+            playlist_url=playlist_url,
+        )
         click.echo("\nExecutive Summary of the Playlist:")
         click.echo(playlist_summary)
     except LLMConnectionError as exc:

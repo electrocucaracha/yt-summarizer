@@ -50,7 +50,9 @@ class TestCli(unittest.TestCase):
         mock_service = mock_service_cls.return_value
         mock_service.get_videos_from_notion_db.return_value = [notion_video]
         mock_service.get_videos_from_playlist.return_value = []
-        mock_service.upsert_video.side_effect = lambda video: video
+        mock_service.upsert_video.side_effect = lambda video, playlist_title=None: (
+            video
+        )
 
         progressbar_calls = []
 
@@ -64,6 +66,7 @@ class TestCli(unittest.TestCase):
         cli.callback(
             notion_db_id="mock_db_id",
             notion_token_file="/tmp/mock-token",
+            output_dir=None,
             model="ollama/llama3.2",
             api_base="http://localhost:11434",
             log_level="INFO",
@@ -85,7 +88,9 @@ class TestCli(unittest.TestCase):
             f"Processing video: {notion_video.url}",
             [call.args[0] for call in mock_echo.call_args_list if call.args],
         )
-        mock_service.upsert_video.assert_called_once_with(notion_video)
+        mock_service.upsert_video.assert_called_once_with(
+            notion_video, playlist_title=None
+        )
         mock_service.generate_playlist_summary.assert_called_once_with(
             [notion_video], playlist_title=None
         )
@@ -124,6 +129,7 @@ class TestCli(unittest.TestCase):
             cli.callback(
                 notion_db_id="mock_db_id",
                 notion_token_file="/tmp/mock-token",
+                output_dir=None,
                 model="ollama/llama3.2",
                 api_base="http://localhost:11434",
                 log_level="INFO",
@@ -165,7 +171,9 @@ class TestCli(unittest.TestCase):
             "title": "Platform Engineering Weekly",
             "videos": [playlist_video],
         }
-        mock_service.upsert_video.side_effect = lambda video: video
+        mock_service.upsert_video.side_effect = lambda video, playlist_title=None: (
+            video
+        )
         mock_progressbar.side_effect = lambda iterable, **kwargs: _FakeProgressBar(
             list(iterable)
         )
@@ -173,6 +181,7 @@ class TestCli(unittest.TestCase):
         cli.callback(
             notion_db_id="mock_db_id",
             notion_token_file="/tmp/mock-token",
+            output_dir=None,
             model="ollama/llama3.2",
             api_base="http://localhost:11434",
             log_level="INFO",
@@ -184,6 +193,54 @@ class TestCli(unittest.TestCase):
         mock_service.generate_playlist_summary.assert_called_once_with(
             [notion_video, playlist_video],
             playlist_title="Platform Engineering Weekly",
+        )
+
+    @patch("yt_summarizer.logging.basicConfig")
+    @patch("yt_summarizer._read_token_from_file")
+    @patch("yt_summarizer.click.echo")
+    @patch("yt_summarizer.click.progressbar")
+    @patch("yt_summarizer.YouTubeSummarizerService")
+    def test_cli_defaults_to_filesystem_storage_without_notion(
+        self,
+        mock_service_cls,
+        mock_progressbar,
+        _mock_echo,
+        mock_read_token,
+        _mock_basic_config,
+    ):
+        """Without a Notion database the CLI should store results in the docs bundle."""
+        stored_video = YouTubeVideo(url="https://www.youtube.com/watch?v=video1")
+        mock_service = mock_service_cls.return_value
+        mock_service.get_videos_from_filesystem.return_value = [stored_video]
+        mock_service.generate_playlist_summary.return_value = "executive summary"
+        mock_service.upsert_video.side_effect = lambda video, playlist_title=None: (
+            video
+        )
+        mock_progressbar.side_effect = lambda iterable, **kwargs: _FakeProgressBar(
+            list(iterable)
+        )
+
+        cli.callback(
+            notion_db_id=None,
+            notion_token_file="/tmp/mock-token",
+            output_dir=None,
+            model="ollama/llama3.2",
+            api_base="http://localhost:11434",
+            log_level="INFO",
+            playlist_url=None,
+            proxy_username=None,
+            proxy_password=None,
+        )
+
+        mock_read_token.assert_not_called()
+        mock_service.get_videos_from_notion_db.assert_not_called()
+        self.assertEqual("docs", mock_service_cls.call_args.kwargs["output_dir"])
+        self.assertIsNone(mock_service_cls.call_args.kwargs["token"])
+        mock_service.store_playlist.assert_called_once_with(
+            [stored_video],
+            playlist_title=None,
+            playlist_summary="executive summary",
+            playlist_url=None,
         )
 
     def test_resolve_api_base_uses_provider_default_for_github_copilot(self):

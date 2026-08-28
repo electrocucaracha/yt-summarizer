@@ -23,7 +23,6 @@ of all components for efficient video summarization.
 
 import copy
 import logging
-from typing import Optional
 
 import click
 import httpx
@@ -34,6 +33,7 @@ from .llm import EXECUTIVE_SUMMARY_CHAR_LIMIT
 from .llm import Client as LLMClient
 from .model import YouTubeVideo
 from .notion import Client as NotionClient
+from .okf import Client as OKFClient
 from .youtube import Client as YouTubeClient
 
 logger = logging.getLogger(__name__)
@@ -50,20 +50,30 @@ class YouTubeSummarizerService:
 
     def __init__(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         self,
-        token: str,
-        notion_db_id: str,
+        token: str | None = None,
+        notion_db_id: str | None = None,
         model: str = "ollama/llama3.2",
-        api_base: Optional[str] = None,
-        proxy_username: Optional[str] = None,
-        proxy_password: Optional[str] = None,
+        api_base: str | None = None,
+        proxy_username: str | None = None,
+        proxy_password: str | None = None,
+        output_dir: str | None = None,
     ):
-        """Initialize the summarizer service with database and LLM clients.
+        """Initialize the summarizer service with storage and LLM clients.
+
+        At least one storage backend must be configured: Notion (``token`` plus
+        ``notion_db_id``) or the filesystem (``output_dir``).
 
         Args:
-            token: Notion API authentication token.
-            notion_db_id: The Notion database ID containing video records.
+            token: Notion API authentication token. Optional.
+            notion_db_id: The Notion database ID containing video records. Optional.
             model: LLM model identifier (default: ollama/llama3.2).
             api_base: Optional LLM API base URL. Defaults to None (use provider default).
+            proxy_username: Optional Webshare proxy username.
+            proxy_password: Optional Webshare proxy password.
+            output_dir: Optional root folder of the OKF bundle to write.
+
+        Raises:
+            ValueError: If no storage backend is configured.
         """
         logger.debug("Initializing YouTube summarizer service")
 
@@ -79,8 +89,19 @@ class YouTubeSummarizerService:
             )
             http_client_proxy = httpx.Client(proxy=self.proxy_config.url)
 
-        logger.debug("Initializing NotionClient with token: %s", token)
-        self.notion_client = NotionClient(token=token, client=http_client_proxy)
+        self.notion_client = None
+        if token and notion_db_id:
+            logger.debug("Initializing NotionClient for database: %s", notion_db_id)
+            self.notion_client = NotionClient(token=token, client=http_client_proxy)
+
+        self.okf_client = OKFClient(root=output_dir) if output_dir else None
+
+        if not self.notion_client and not self.okf_client:
+            raise ValueError(
+                "No storage backend configured: provide Notion credentials or an "
+                "output directory."
+            )
+
         self.llm_client = LLMClient(model=model, api_base=api_base)
         logger.debug("Service initialized successfully")
 
@@ -93,7 +114,12 @@ class YouTubeSummarizerService:
 
         Returns:
             A list of ``YouTubeVideo`` objects for records that contain a URL.
+            Empty when Notion is not configured.
         """
+        if not self.notion_client:
+            logger.info("Notion is not configured; skipping database retrieval")
+            return []
+
         logger.info("Retrieving videos from Notion database: %s", self.notion_db_id)
         properties = self.notion_client.get_page_properties_from_database(
             self.notion_db_id
@@ -163,7 +189,7 @@ class YouTubeSummarizerService:
         for attempt in range(1, retries + 1):
             try:
                 return fetch_function(*args, **kwargs)
-            except Exception as e:  # pylint: disable=broad-exception-caught
+            except (OSError, TypeError, ValueError, httpx.HTTPError) as e:
                 logger.warning("Attempt %d/%d failed: %s", attempt, retries, str(e))
                 if attempt == retries:
                     logger.error("All retry attempts failed.")
@@ -213,8 +239,25 @@ class YouTubeSummarizerService:
 
         return result
 
-    def upsert_video(self, video: YouTubeVideo) -> YouTubeVideo:
-        """Create or update a Notion row when derived video fields changed.
+    def get_videos_from_filesystem(self, playlist_title: str | None = None):
+        """Load already summarized videos from the OKF bundle on disk.
+
+        Args:
+            playlist_title: Playlist whose concepts should be loaded.
+
+        Returns:
+            A list of ``YouTubeVideo`` objects, or an empty list when the
+            filesystem backend is not configured.
+        """
+        if not self.okf_client:
+            logger.info("Filesystem storage is not configured; skipping retrieval")
+            return []
+        return self.okf_client.get_videos(playlist_title)
+
+    def upsert_video(
+        self, video: YouTubeVideo, playlist_title: str | None = None
+    ) -> YouTubeVideo:
+        """Persist a video in every configured backend when its content changed.
 
         The method enriches the supplied video, compares the before/after content
         hash, and only writes ``Title``, ``URL``, ``Summary``, and
@@ -222,6 +265,7 @@ class YouTubeSummarizerService:
 
         Args:
             video: A YouTubeVideo object with updated metadata.
+            playlist_title: Playlist used to place the OKF concept document.
         """
         # Compute the hash before processing
         original_hash = video.compute_hash()
@@ -234,36 +278,77 @@ class YouTubeSummarizerService:
 
         # Check if the video has changed
         if original_hash != updated_hash:
-            logger.info("Video has changed. Updating Notion database.")
-            # Proceed with upsert logic
-            properties = {
-                "Title": updated_video.title,
-                "URL": updated_video.url,
-                "Summary": updated_video.summary,
-                "Main Points": updated_video.main_points,
-            }
-            try:
-                if updated_video.id:
-                    logger.debug("Updating existing page with ID: %s", updated_video.id)
-                    self.notion_client.update_page_properties(
-                        self.notion_db_id,
-                        updated_video.id,
-                        properties=properties,
-                    )
-                else:
-                    logger.debug(
-                        "Creating a new page in database: %s", self.notion_db_id
-                    )
-                    updated_video.id = self.notion_client.create_page(
-                        self.notion_db_id,
-                        properties=properties,
-                    )
-            except Exception as e:  # pylint: disable=broad-exception-caught
-                logger.error("Failed to update or create video in Notion: %s", e)
+            logger.info("Video has changed. Updating configured storage backends.")
+            self._upsert_video_in_notion(updated_video)
+            self._upsert_video_in_filesystem(updated_video, playlist_title)
         else:
             logger.info("No changes detected for video: %s", video.url)
 
         return updated_video
+
+    def _upsert_video_in_notion(self, video: YouTubeVideo) -> None:
+        """Create or update the Notion row backing ``video``."""
+        if not self.notion_client:
+            return
+
+        properties = {
+            "Title": video.title,
+            "URL": video.url,
+            "Summary": video.summary,
+            "Main Points": video.main_points,
+        }
+        try:
+            if video.id:
+                logger.debug("Updating existing page with ID: %s", video.id)
+                self.notion_client.update_page_properties(
+                    self.notion_db_id,
+                    video.id,
+                    properties=properties,
+                )
+            else:
+                logger.debug("Creating a new page in database: %s", self.notion_db_id)
+                video.id = self.notion_client.create_page(
+                    self.notion_db_id,
+                    properties=properties,
+                )
+        except (OSError, TypeError, ValueError, httpx.HTTPError) as e:
+            logger.error("Failed to update or create video in Notion: %s", e)
+
+    def _upsert_video_in_filesystem(
+        self, video: YouTubeVideo, playlist_title: str | None
+    ) -> None:
+        """Write the OKF concept document backing ``video``."""
+        if not self.okf_client:
+            return
+
+        try:
+            self.okf_client.write_video(video, playlist_title=playlist_title)
+        except OSError as e:
+            logger.error("Failed to write video concept to the filesystem: %s", e)
+
+    def store_playlist(
+        self,
+        videos: list[YouTubeVideo],
+        playlist_title: str | None = None,
+        playlist_summary: str = "",
+        playlist_url: str | None = None,
+    ) -> None:
+        """Write the playlist concept and index files to the OKF bundle.
+
+        No-op when the filesystem backend is not configured.
+        """
+        if not self.okf_client:
+            return
+
+        try:
+            self.okf_client.write_playlist(
+                videos,
+                playlist_title=playlist_title,
+                playlist_summary=playlist_summary,
+                playlist_url=playlist_url,
+            )
+        except OSError as e:
+            logger.error("Failed to write playlist bundle to the filesystem: %s", e)
 
     def get_videos_from_playlist(self, playlist_url: str):
         """Extract playlist title and flat video metadata from a playlist URL.
@@ -324,7 +409,7 @@ class YouTubeSummarizerService:
         ]
 
     def _reduce_playlist_summaries(
-        self, summaries: list[str], playlist_title: Optional[str] = None
+        self, summaries: list[str], playlist_title: str | None = None
     ) -> str:
         """Reduce many summaries into one by iterating over fixed-size chunks.
 
@@ -366,7 +451,7 @@ class YouTubeSummarizerService:
         return current_summaries[0] if current_summaries else ""
 
     def generate_playlist_summary(
-        self, videos: list[YouTubeVideo], playlist_title: Optional[str] = None
+        self, videos: list[YouTubeVideo], playlist_title: str | None = None
     ) -> str:
         """Generate an executive summary from the summaries attached to videos.
 

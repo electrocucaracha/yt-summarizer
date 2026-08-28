@@ -22,7 +22,6 @@ serves as the core data structure for the application.
 
 import hashlib
 import logging
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +57,7 @@ class YouTubeVideo:
     def __init__(
         self,
         url: str,
-        id: Optional[str] = None,
+        id: str | None = None,
         title: str = "",
         transcript: str = "",
         summary: str = "",

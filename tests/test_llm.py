@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 import litellm
 
 from yt_summarizer.llm import (
+    CHUNK_CHAR_SIZE,
     EXECUTIVE_SUMMARY_CHAR_LIMIT,
     MAIN_POINTS_CHAR_LIMIT,
     TRANSCRIPT_SUMMARY_CHAR_LIMIT,
@@ -137,6 +138,79 @@ class TestLLMClient(unittest.TestCase):
         main_points_messages = mock_completion.call_args.kwargs["messages"]
         self.assertIn(str(MAIN_POINTS_CHAR_LIMIT), main_points_messages[0]["content"])
         self.assertIn(str(MAIN_POINTS_CHAR_LIMIT), main_points_messages[1]["content"])
+
+
+class TestSummarizationChain(unittest.TestCase):
+    """Tests for the map-reduce summarization chain used by Ollama models."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.client = Client(model="ollama/llama3.2", api_base="http://localhost:11434")
+        self.long_text = "word " * (CHUNK_CHAR_SIZE // 2)
+
+    def test_chain_enabled_only_for_ollama_models(self):
+        """Only locally hosted Ollama models should use the chain."""
+        self.assertTrue(self.client.uses_summarization_chain)
+        self.assertFalse(Client(model="gpt-4", api_base=None).uses_summarization_chain)
+
+    @patch("yt_summarizer.llm.litellm.completion")
+    def test_short_text_skips_the_chain(self, mock_completion):
+        """Text that fits the context window should use a single request."""
+        mock_completion.return_value = MagicMock(
+            choices=[MagicMock(message=MagicMock(content="Summary"))]
+        )
+
+        self.client.summarize("Short transcript")
+
+        self.assertEqual(mock_completion.call_count, 1)
+
+    @patch("yt_summarizer.llm.litellm.completion")
+    def test_long_text_is_chunked_and_reduced(self, mock_completion):
+        """Long text should be summarized per chunk before the final prompt."""
+        mock_completion.return_value = MagicMock(
+            choices=[MagicMock(message=MagicMock(content="Partial summary"))]
+        )
+
+        self.client.summarize(self.long_text)
+
+        self.assertGreater(mock_completion.call_count, 1)
+        chunk_messages = mock_completion.call_args_list[0].kwargs["messages"]
+        self.assertIn("part 1 of", chunk_messages[1]["content"])
+        self.assertLessEqual(len(chunk_messages[1]["content"]), CHUNK_CHAR_SIZE + 500)
+
+        final_messages = mock_completion.call_args.kwargs["messages"]
+        self.assertIn("Partial summary", final_messages[1]["content"])
+
+    @patch("yt_summarizer.llm.litellm.completion")
+    def test_chain_stops_when_text_does_not_shrink(self, mock_completion):
+        """Non-shrinking chunk summaries must not loop indefinitely."""
+        mock_completion.return_value = MagicMock(
+            choices=[MagicMock(message=MagicMock(content="x" * CHUNK_CHAR_SIZE))]
+        )
+
+        self.client.summarize(self.long_text)
+
+        self.assertLessEqual(mock_completion.call_count, 4)
+
+
+class TestDirectCompletionBehavior(unittest.TestCase):
+    """Models without a small context window should get one direct completion."""
+
+    @patch("yt_summarizer.llm.litellm.completion")
+    def test_non_ollama_model_sends_full_text(self, mock_completion):
+        """Hosted models with large contexts should receive the untouched text."""
+        mock_completion.return_value = MagicMock(
+            choices=[MagicMock(message=MagicMock(content="Summary"))]
+        )
+        client = Client(model="gpt-4", api_base=None)
+        long_text = "word " * 2000
+
+        client.summarize(long_text)
+
+        self.assertEqual(mock_completion.call_count, 1)
+        self.assertIn(
+            long_text, mock_completion.call_args.kwargs["messages"][1]["content"]
+        )
 
 
 if __name__ == "__main__":

@@ -21,7 +21,6 @@ This module abstracts the complexity of LLM interactions for seamless integratio
 """
 
 import logging
-from typing import Optional
 
 import litellm
 
@@ -29,10 +28,39 @@ logger = logging.getLogger(__name__)
 TRANSCRIPT_SUMMARY_CHAR_LIMIT = 2000
 MAIN_POINTS_CHAR_LIMIT = 2000
 EXECUTIVE_SUMMARY_CHAR_LIMIT = 6000
+# Locally hosted models expose small context windows, so long inputs are condensed
+# with a map-reduce summarization chain before the final prompt.
+CHAIN_MODEL_PREFIXES = ("ollama/", "ollama_chat/")
+CHUNK_CHAR_SIZE = 8000
+MAX_CHAIN_PASSES = 5
 
 
 class LLMConnectionError(RuntimeError):
     """Raised when the configured LLM endpoint cannot be reached."""
+
+
+def _split_into_chunks(text: str, size: int) -> list[str]:
+    """Split text into chunks of at most ``size`` characters on word boundaries.
+
+    Args:
+        text: The text to split.
+        size: Maximum number of characters per chunk.
+
+    Returns:
+        The ordered list of non-empty chunks.
+    """
+    chunks: list[str] = []
+    remaining = text.strip()
+    while len(remaining) > size:
+        window = remaining[:size]
+        split_at = max(window.rfind("\n"), window.rfind(" "))
+        if split_at <= 0:
+            split_at = size
+        chunks.append(remaining[:split_at].strip())
+        remaining = remaining[split_at:].strip()
+    if remaining:
+        chunks.append(remaining)
+    return chunks
 
 
 class Client:
@@ -42,7 +70,7 @@ class Client:
     transcripts, including summarization and key point extraction.
     """
 
-    def __init__(self, model: str, api_base: Optional[str]) -> None:
+    def __init__(self, model: str, api_base: str | None) -> None:
         """Initialize LLM client with model and API configuration.
 
         Args:
@@ -69,6 +97,7 @@ class Client:
         """
         logger.info("Generating summary using LLM")
         logger.debug("Summarizing %d characters of text", len(text))
+        text = self._condense(text)
         messages = [
             {
                 "role": "system",
@@ -115,6 +144,7 @@ class Client:
         """
         logger.info("Generating executive summary using LLM")
         logger.debug("Synthesizing executive summary from %d characters", len(text))
+        text = self._condense(text)
         playlist_context = (
             f"The playlist title is: {playlist_title}. Use it as context for the "
             "executive summary when relevant. "
@@ -171,6 +201,7 @@ class Client:
         """
         logger.info("Extracting main points using LLM")
         logger.debug("Extracting main points from %d characters of text", len(text))
+        text = self._condense(text)
         messages = [
             {
                 "role": "system",
@@ -204,6 +235,77 @@ class Client:
             len(main_points),
         )
         return main_points
+
+    @property
+    def uses_summarization_chain(self) -> bool:
+        """Whether the configured model requires chunked summarization."""
+        return self.model.startswith(CHAIN_MODEL_PREFIXES)
+
+    def _condense(self, text: str) -> str:
+        """Reduce long text with a map-reduce summarization chain.
+
+        Each pass splits the text into context-sized chunks, summarizes every chunk
+        independently (map), and joins the partial summaries (reduce). Passes repeat
+        until the text fits a single context window, the pass limit is reached, or
+        the text stops shrinking.
+
+        Args:
+            text: The text to condense.
+
+        Returns:
+            Text short enough to be sent to the model in a single request.
+        """
+        if not self.uses_summarization_chain:
+            return text
+
+        for _ in range(MAX_CHAIN_PASSES):
+            if len(text) <= CHUNK_CHAR_SIZE:
+                return text
+
+            chunks = _split_into_chunks(text, CHUNK_CHAR_SIZE)
+            logger.info(
+                "Running summarization chain pass over %d chunks (%d characters)",
+                len(chunks),
+                len(text),
+            )
+            condensed = "\n\n".join(
+                self._summarize_chunk(chunk, index, len(chunks))
+                for index, chunk in enumerate(chunks, start=1)
+            )
+            if len(condensed) >= len(text):
+                logger.warning("Summarization chain stopped making progress")
+                return condensed
+            text = condensed
+
+        return text
+
+    def _summarize_chunk(self, chunk: str, index: int, total: int) -> str:
+        """Summarize a single chunk as part of the summarization chain."""
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "You are a professional summarization assistant working on a "
+                    "partial excerpt of a longer text. "
+                    "Preserve every relevant fact, name, number, and conclusion "
+                    "stated in the excerpt, and do not add information that is not "
+                    "explicitly present. "
+                    "Return only the summary, in the same language as the excerpt."
+                ),
+            },
+            {
+                "role": "user",
+                "content": (
+                    f"This is part {index} of {total} of a longer text. "
+                    "Summarize it densely, keeping all key details so the parts can "
+                    "later be merged into a single summary.\n\n"
+                    f"{chunk}"
+                ),
+            },
+        ]
+        return self._complete(
+            messages=messages, action=f"summarize part {index} of {total}"
+        )
 
     def _complete(self, messages: list[dict[str, str]], action: str) -> str:
         """Run a LiteLLM completion request and normalize connectivity failures."""

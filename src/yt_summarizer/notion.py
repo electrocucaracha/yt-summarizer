@@ -26,7 +26,7 @@ import logging
 import time
 import uuid
 from datetime import datetime
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, cast
 
 import httpx
 import notion_client
@@ -44,7 +44,7 @@ class Client:
     and Notion-specific property types.
     """
 
-    def __init__(self, token: str, client: Optional[httpx.Client]):
+    def __init__(self, token: str, client: httpx.Client | None):
         """Initialize Notion client with authentication token.
 
         Args:
@@ -55,7 +55,7 @@ class Client:
         self.token = token
         self.notion_client = NotionClient(auth=token, client=client)
 
-    def _user_to_string(self, user: Dict[str, Any]) -> str:
+    def _user_to_string(self, user: dict[str, Any]) -> str:
         """Convert a Notion user object to a readable string.
 
         Args:
@@ -68,7 +68,7 @@ class Client:
         name = user.get("name") or "Unknown Name"
         return f"{user_id}: {name}"
 
-    def _extract_value_to_string(self, prop_item: Dict[str, Any]) -> str:
+    def _extract_value_to_string(self, prop_item: dict[str, Any]) -> str:
         """Extract and convert a property value to string representation.
 
         Routes extraction to appropriate handler based on property object type,
@@ -91,7 +91,7 @@ class Client:
         return ""
 
     def _extract_property_item_value_to_string(  # pylint: disable=redefined-builtin
-        self, prop_item: Dict[str, Any]
+        self, prop_item: dict[str, Any]
     ) -> str:
         """Convert individual Notion property items to string based on type.
 
@@ -264,7 +264,7 @@ class Client:
         }
 
         while has_more:
-            payload: Dict[str, Any] = (
+            payload: dict[str, Any] = (
                 {"start_cursor": start_cursor} if start_cursor else {}
             )
             response = httpx.post(url, headers=headers, json=payload)
@@ -281,10 +281,10 @@ class Client:
         logger.debug("Total pages retrieved: %d", len(pages))
         return pages
 
-    def _get_database_data_source_id(self, database_id: str) -> Optional[str]:
+    def _get_database_data_source_id(self, database_id: str) -> str | None:
         """Resolve the primary data source ID for a database."""
         database = cast(
-            Dict[str, Any],
+            dict[str, Any],
             self.notion_client.databases.retrieve(database_id=database_id),
         )
         data_sources = database.get("data_sources", [])
@@ -308,7 +308,7 @@ class Client:
             return None
         return cast(str, data_source_id)
 
-    def _get_page_properties_from_page(self, page: Dict[str, Any]) -> Dict[str, Any]:
+    def _get_page_properties_from_page(self, page: dict[str, Any]) -> dict[str, Any]:
         """Extract property values from a page payload."""
         properties = {}
         for key, value in page.get("properties", {}).items():
@@ -316,14 +316,14 @@ class Client:
             logger.debug("Processed property '%s': %s", key, properties[key])
         return properties
 
-    def _query_data_source_content(self, data_source_id: str) -> List[Dict[str, Any]]:
+    def _query_data_source_content(self, data_source_id: str) -> list[dict[str, Any]]:
         """Retrieve all pages from a Notion data source with pagination."""
-        pages: List[Dict[str, Any]] = []
+        pages: list[dict[str, Any]] = []
         has_more = True
         start_cursor = None
 
         while has_more:
-            query_args: Dict[str, Any] = {
+            query_args: dict[str, Any] = {
                 "data_source_id": data_source_id,
                 "page_size": 100,
                 "result_type": "page",
@@ -332,7 +332,7 @@ class Client:
                 query_args["start_cursor"] = start_cursor
 
             response = cast(
-                Dict[str, Any], self.notion_client.data_sources.query(**query_args)
+                dict[str, Any], self.notion_client.data_sources.query(**query_args)
             )
             results = response.get("results", [])
             pages.extend(result for result in results if isinstance(result, dict))
@@ -407,7 +407,7 @@ class Client:
         """
         logger.info("Fetching properties for page ID: %s", page_id)
         logger.debug("Retrieving page with ID: %s", page_id)
-        page = cast(Dict[str, Any], self.notion_client.pages.retrieve(page_id=page_id))
+        page = cast(dict[str, Any], self.notion_client.pages.retrieve(page_id=page_id))
         logger.debug("Page data retrieved: %s", page)
         properties = self._get_page_properties_from_page(page)
         logger.info("Completed fetching properties for page ID: %s", page_id)
@@ -421,7 +421,7 @@ class Client:
 
     def _format_property_for_update(
         self, prop_type: str, value: str
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Convert string value to Notion API format based on property type.
 
         Transforms a value into the appropriate Notion API structure for the
@@ -539,7 +539,7 @@ class Client:
             )
             return None
 
-    def get_database_schema(self, database_id: str) -> Dict[str, str]:
+    def get_database_schema(self, database_id: str) -> dict[str, str]:
         """Retrieve all property names and types from a database.
 
         Fetches the database schema to understand available properties and
@@ -555,7 +555,7 @@ class Client:
             Uses the Notion SDK client to retrieve the database schema.
         """
         database = cast(
-            Dict[str, Any],
+            dict[str, Any],
             self.notion_client.databases.retrieve(database_id=database_id),
         )
         db_properties = database.get("properties", {})
@@ -565,7 +565,7 @@ class Client:
         return schema
 
     def update_page_properties(
-        self, database_id: str, page_id: str, properties: Dict[str, str]
+        self, database_id: str, page_id: str, properties: dict[str, str]
     ) -> bool:
         """Update page properties in a Notion database.
 
@@ -597,11 +597,11 @@ class Client:
 
         # Get database schema to determine property types
         max_retries = 3
-        database: Dict[str, Any] = {}
+        database: dict[str, Any] = {}
         for attempt in range(max_retries):
             try:
                 database = cast(
-                    Dict[str, Any],
+                    dict[str, Any],
                     self.notion_client.databases.retrieve(database_id=database_id),
                 )
                 break
@@ -634,7 +634,7 @@ class Client:
             logger.debug("Attempting to retrieve page with ID: %s", page_id)
             try:
                 page = cast(
-                    Dict[str, Any],
+                    dict[str, Any],
                     self.notion_client.pages.retrieve(page_id=page_id),
                 )
                 logger.debug("Successfully retrieved page: %s", page)
@@ -653,7 +653,7 @@ class Client:
 
         # Format properties according to their types
         # Create a case-insensitive mapping of property names for matching
-        prop_name_map = {name.lower(): name for name in db_properties.keys()}
+        prop_name_map = {name.lower(): name for name in db_properties}
 
         formatted_properties = {}
         for prop_name, prop_value in properties.items():
@@ -697,9 +697,7 @@ class Client:
             logger.error("Error updating page: %s", e)
             return False
 
-    def create_page(
-        self, database_id: str, properties: Dict[str, str]
-    ) -> Optional[str]:
+    def create_page(self, database_id: str, properties: dict[str, str]) -> str | None:
         """Create a new page (row) in a Notion database.
 
         Converts string property values into the correct Notion API format
@@ -718,7 +716,7 @@ class Client:
         logger.info("Creating a new page in database: %s", database_id)
         try:
             database = cast(
-                Dict[str, Any],
+                dict[str, Any],
                 self.notion_client.databases.retrieve(database_id=database_id),
             )
 
@@ -737,7 +735,7 @@ class Client:
 
                 # Retrieve schema from data source using the Notion SDK client
                 data_source = cast(
-                    Dict[str, Any],
+                    dict[str, Any],
                     self.notion_client.data_sources.retrieve(
                         data_source_id=data_source_id
                     ),
@@ -749,7 +747,13 @@ class Client:
                 )
                 db_properties = database.get("properties", {})
 
-        except Exception as e:  # pylint: disable=broad-exception-caught
+        except (
+            OSError,
+            TypeError,
+            ValueError,
+            notion_client.errors.APIResponseError,
+            httpx.HTTPError,
+        ) as e:
             logger.error("Failed retrieving database schema: %s", e)
             return None
 
@@ -758,7 +762,10 @@ class Client:
             "Database response keys: %s",
             list(database.keys()) if isinstance(database, dict) else "not a dict",
         )
-        logger.debug("Available properties in database: %s", list(db_properties.keys()))
+        logger.debug(
+            "Available properties in database: %s",
+            list(db_properties.keys()),
+        )
 
         if not db_properties:
             logger.error("Database schema is empty or unavailable")
@@ -766,9 +773,9 @@ class Client:
 
         try:  # pylint: disable=broad-exception-caught
             # Case-insensitive property name mapping
-            prop_name_map = {name.lower(): name for name in db_properties.keys()}
+            prop_name_map = {name.lower(): name for name in db_properties}
 
-            formatted_properties: Dict[str, Any] = {}
+            formatted_properties: dict[str, Any] = {}
 
             for prop_name, prop_value in properties.items():
                 actual_prop_name = prop_name_map.get(prop_name.lower())
@@ -792,7 +799,7 @@ class Client:
             try:
                 # Create the page
                 page = cast(
-                    Dict[str, Any],
+                    dict[str, Any],
                     self.notion_client.pages.create(
                         parent={"database_id": database_id},
                         properties=formatted_properties,
@@ -804,10 +811,9 @@ class Client:
             except notion_client.errors.APIResponseError as e:
                 if "404" in str(e):
                     logger.error("Page not found. Creating a new page.")
-                    # Retry creating the page
                     try:
                         page = cast(
-                            Dict[str, Any],
+                            dict[str, Any],
                             self.notion_client.pages.create(
                                 parent={"database_id": database_id},
                                 properties=formatted_properties,
@@ -815,19 +821,28 @@ class Client:
                         )
                         logger.debug("Retry page creation response: %s", page)
                         return page.get("id")
-                    except (  # pylint: disable=broad-exception-caught
-                        Exception
+                    except (
+                        OSError,
+                        TypeError,
+                        ValueError,
+                        notion_client.errors.APIResponseError,
+                        httpx.HTTPError,
                     ) as retry_error:
                         logger.error("Failed to create page on retry: %s", retry_error)
                         return None
-                else:
-                    logger.error("APIResponseError during page creation: %s", e)
-                    return None
-            except Exception as e:  # pylint: disable=broad-exception-caught
+                logger.error("APIResponseError during page creation: %s", e)
+                return None
+            except (OSError, TypeError, ValueError, httpx.HTTPError) as e:
                 logger.error("Unexpected error during page creation: %s", e)
                 return None
 
-        except Exception as e:  # pylint: disable=broad-exception-caught
+        except (
+            OSError,
+            TypeError,
+            ValueError,
+            notion_client.errors.APIResponseError,
+            httpx.HTTPError,
+        ) as e:
             logger.error("Error creating page: %s", e)
             return None
 

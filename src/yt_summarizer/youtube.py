@@ -22,7 +22,6 @@ robust handling of various YouTube video formats and restrictions.
 """
 
 import logging
-from typing import Optional
 from urllib.parse import parse_qs, urlparse
 
 import requests
@@ -49,7 +48,7 @@ class Client:
     """
 
     def __init__(
-        self, proxy_username: Optional[str] = None, proxy_password: Optional[str] = None
+        self, proxy_username: str | None = None, proxy_password: str | None = None
     ):
         """Initialize the YouTube client and optional proxy-backed transcript API.
 
