@@ -19,13 +19,13 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # 7.0.1
         with:
           persist-credentials: false
       - name: Setup Go
-        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # 6.4.0
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # 7.0.0
         with:
-          go-version: "^1.26"
+          go-version: "^1.27"
           cache: false
       - name: Install dependencies
         run: go install github.com/boyter/scc/v3@latest
@@ -39,13 +39,13 @@ jobs:
       models: read
       issues: write
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # 7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
       - name: Run super-linter validation
         id: linter-validation
-        uses: super-linter/super-linter@9e863354e3ff62e0727d37183162c4a88873df41 # 8.6.0
+        uses: super-linter/super-linter@4ce20838b8ab83717e78138c5b3a1407148e0918 # 8.7.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           LINTER_RULES_PATH: .github/linters
@@ -63,7 +63,7 @@ jobs:
         if: failure()
         run: |
           find ./super-linter-output/super-linter/ -name '*.json' -exec sh -c 'jq -e ".Exitval != 0" "$1" >/dev/null && printf "%s\0" "$1"' _ {} \; | xargs -0 jq -s '.' > linter-errors.json
-      - uses: actions/ai-inference@af6ad2c4ac4edf01884054fc3a6caa6d2567c13a # 2.0.8
+      - uses: actions/ai-inference@2c43c91ae16266ca159d311430343c67a5ffa222 # 3
         id: ai-linter-analysis
         if: failure()
         with:
@@ -102,7 +102,7 @@ jobs:
             printf "\n%s\n" "$DELIM"
           } >> "$GITHUB_OUTPUT"
         # jscpd:ignore-end
-      - uses: jayqi/failed-build-issue-action@1a893bbf43ef1c2a8705e2b115cd4f0fe3c5649b # 1.2.0
+      - uses: jayqi/failed-build-issue-action@940568ce50eeef3f31a920614cefcc6102d2f930 # 1.3.0
         if: failure()
         with:
           github-token: ${{ github.token }}
