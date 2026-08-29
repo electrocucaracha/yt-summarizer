@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- BREAKING: Enabled support for local storage of summaries in Open Knowledge Format (OKF) bundles with YAML frontmatter, requiring explicit output directory or Notion configuration to ensure seamless transition from existing Notion-based deployments. [682ccab5](https://github.com/electrocucaracha/yt-summarizer/commit/682ccab538d8295ce27f7a9314057c0c062a758e)
+- BREAKING: Enabled support for localStorage of summaries in Open Knowledge Format (OKF) bundles with YAML frontmatter, requiring explicit output directory or Notion configuration to ensure seamless transition from existing Notion-based deployments. [682ccab5](https://github.com/electrocucaracha/yt-summarizer/commit/682ccab538d8295ce27f7a9314057c0c062a758e)
 
 ## [2.0.0] - 2026-08-27
 
@@ -25,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Updated dependencies to their latest versions, ensuring compatibility and reducing maintenance burden by addressing upstream bug fixes, security patches, and new features. [77b414fc](https://github.com/electrocucaracha/yt-summarizer/commit/77b414fc5302280f22e88abc2ae32b8681309107)
+- Updated dependencies to their latest versions, ensuring compatibility and reducing maintenance burden by addressing upstream bugfixes, security patches, and new features. [77b414fc](https://github.com/electrocucaracha/yt-summarizer/commit/77b414fc5302280f22e88abc2ae32b8681309107)
 
 ## [1.33.3] - 2026-05-15
 
@@ -55,7 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Simplified the dependencies of workflow files by updating GitHub Actions to their latest available versions, including setup-uv, setup-go, docker actions, and actions/ai-inference, thereby improving security and ensuring compatibility with upstream changes and bug fixes. [662b5e4b](https://github.com/electrocucaracha/yt-summarizer/commit/662b5e4be43b0c33c6e7cd6cb05681d0476cbfd7)
+- Simplified the dependencies of workflow files by updating GitHub Actions to their latest available versions, including setup-uv, setup-go, Docker actions, and actions/ai-inference, thereby improving security and ensuring compatibility with upstream changes and bugfixes. [662b5e4b](https://github.com/electrocucaracha/yt-summarizer/commit/662b5e4be43b0c33c6e7cd6cb05681d0476cbfd7)
 
 ## [1.32.0] - 2026-05-06
 
@@ -91,7 +91,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- The GitHub actions, linter configuration, and project setup were updated to improve code quality and security, with no breaking changes introduced. [c3f6c8dd](https://github.com/electrocucaracha/yt-summarizer/commit/c3f6c8dd4bc5a182b06b3e358e0ab9428424cca7)
+- The GitHub Actions, linter configuration, and project setup were updated to improve code quality and security, with no breaking changes introduced. [c3f6c8dd](https://github.com/electrocucaracha/yt-summarizer/commit/c3f6c8dd4bc5a182b06b3e358e0ab9428424cca7)
 
 ## [1.29.4] - 2026-04-14
 
@@ -229,7 +229,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Enabled super-linter CI to pass by updating multiple linter configurations and dependencies, resolving issues with pylint docstrings, mypy type annotations, action versions, shell, and ruff formatting, as well as fixing the EDITORCONFIG linter and a KeyError in the og:title meta tag. [28339e40](https://github.com/electrocucaracha/yt-summarizer/commit/28339e401ad3b8fb4c000b200f03d34828448103)
+- Enabled super-linter CI to pass by updating multiple linter configurations and dependencies, resolving issues with pylint docstrings, mypy type annotations, action versions, shell, and ruff formatting, as well as fixing the EditorConfig linter and a KeyError in the og:title meta tag. [28339e40](https://github.com/electrocucaracha/yt-summarizer/commit/28339e401ad3b8fb4c000b200f03d34828448103)
 
 ## [1.20.0] - 2026-03-16
 
@@ -301,7 +301,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Resolved documentation lint issues by updating the GitHub Actions workflow to include necessary permissions for accessing documentation files. [4c48c39e](https://github.com/electrocucaracha/yt-summarizer/commit/4c48c39e16633244b0a64e7534920a4374fbb4f5)
+- Resolved documentation linting issues by updating the GitHub Actions workflow to include necessary permissions for accessing documentation files. [4c48c39e](https://github.com/electrocucaracha/yt-summarizer/commit/4c48c39e16633244b0a64e7534920a4374fbb4f5)
 
 ## [1.12.1] - 2026-02-18
 
@@ -355,7 +355,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Resolved several linter issues across the codebase including APK package version pinning, line length adjustments, import ordering corrections, and Python type annotation fixes. [8801dcbd](https://github.com/electrocucaracha/yt-summarizer/commit/8801dcbd4f59a09b34333183353d292d5db73337)
+- Resolved several linting issues across the codebase including APK package version pinning, line length adjustments, import ordering corrections, and Python type annotation fixes. [8801dcbd](https://github.com/electrocucaracha/yt-summarizer/commit/8801dcbd4f59a09b34333183353d292d5db73337)
 
 ## [1.9.0] - 2026-02-16
 

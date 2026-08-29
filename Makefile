@@ -49,6 +49,8 @@ fmt:
 	$(SHFMT) -l -w -s -i 4 .
 	[ -x "$(YAMLFMT)" ] || GOBIN=$(GO_BIN) go install github.com/google/yamlfmt/cmd/yamlfmt@$(YAMLFMT_VERSION)
 	$(YAMLFMT) -dstar **/*.{yaml,yml}
+	command -v textlint > /dev/null && npm list --global --depth=0 textlint-rule-terminology > /dev/null 2>&1 || sudo npm install --global textlint textlint-rule-terminology
+	textlint . --fix
 	command -v prettier > /dev/null || npm install prettier
 	npx prettier . --write
 	command -v uvx > /dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
