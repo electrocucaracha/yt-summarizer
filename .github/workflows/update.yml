@@ -47,7 +47,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Update Dockerfile dependencies
-        uses: renovatebot/github-action@5402b206248e5a8c8427a15102702eb9c1793efc # v46.2.4
+        uses: renovatebot/github-action@5402b206248e5a8c8427a15102702eb9c1793efc # 46.2.4
         with:
           configurationFile: .github/renovate.json
           renovate-version: 44.50.3
