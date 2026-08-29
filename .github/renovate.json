@@ -1,0 +1,10 @@
+{
+  "enabledManagers": ["dockerfile"],
+  "prCreation": "immediate",
+  "packageRules": [
+    {
+      "matchManagers": ["dockerfile"],
+      "groupName": "Dockerfile images"
+    }
+  ]
+}

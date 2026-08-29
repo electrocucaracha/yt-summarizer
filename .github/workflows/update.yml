@@ -46,8 +46,12 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # 7.0.1
         with:
           persist-credentials: false
-      - name: update Dockerfile
-        uses: ludeeus/dockerfile-updater@eaf8ea79220d076eb46c127fa9895e3de3e0a512 # 21.01.0
+      - name: Update Dockerfile dependencies
+        uses: renovatebot/github-action@5402b206248e5a8c8427a15102702eb9c1793efc # v46.2.4
         with:
+          configurationFile: .github/renovate.json
+          renovate-version: 44.50.3
           token: ${{ secrets.WORKFLOW_TOKEN }} # zizmor: ignore[secrets-outside-env]
-          pr_title: "chore: update Dockerfile"
+        env:
+          RENOVATE_ONBOARDING: false
+          RENOVATE_REQUIRE_CONFIG: optional
