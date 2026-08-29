@@ -288,9 +288,10 @@ class YouTubeSummarizerService:
 
     def _upsert_video_in_notion(self, video: YouTubeVideo) -> None:
         """Create or update the Notion row backing ``video``."""
-        if not self.notion_client:
+        if not self.notion_client or not self.notion_db_id:
             return
 
+        notion_db_id = self.notion_db_id
         properties = {
             "Title": video.title,
             "URL": video.url,
@@ -301,14 +302,14 @@ class YouTubeSummarizerService:
             if video.id:
                 logger.debug("Updating existing page with ID: %s", video.id)
                 self.notion_client.update_page_properties(
-                    self.notion_db_id,
+                    notion_db_id,
                     video.id,
                     properties=properties,
                 )
             else:
                 logger.debug("Creating a new page in database: %s", self.notion_db_id)
                 video.id = self.notion_client.create_page(
-                    self.notion_db_id,
+                    notion_db_id,
                     properties=properties,
                 )
         except (OSError, TypeError, ValueError, httpx.HTTPError) as e:

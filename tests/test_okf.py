@@ -3,6 +3,7 @@
 import tempfile
 import unittest
 from pathlib import Path
+from shutil import rmtree
 
 from yt_summarizer.model import YouTubeVideo
 from yt_summarizer.okf import Client
@@ -13,9 +14,8 @@ class TestOKFClient(unittest.TestCase):
 
     def setUp(self):
         """Create an isolated bundle root for each test."""
-        self._tmp = tempfile.TemporaryDirectory()
-        self.addCleanup(self._tmp.cleanup)
-        self.root = Path(self._tmp.name) / "docs"
+        self.root = Path(tempfile.mkdtemp()) / "docs"
+        self.addCleanup(rmtree, self.root.parent)
         self.client = Client(root=str(self.root))
         self.video = YouTubeVideo(
             url="https://www.youtube.com/watch?v=video1",

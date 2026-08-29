@@ -239,7 +239,7 @@ def _resolve_api_base(
     envvar="PROXY_PASSWORD",
     help="Password for proxy authentication",
 )
-def cli(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+def cli(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-branches
     notion_db_id: str,
     notion_token_file: str,
     output_dir: str | None,
