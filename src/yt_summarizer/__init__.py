@@ -357,11 +357,14 @@ def cli(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too
                 videos.setdefault(stored.url, stored)
 
         # Process videos with progress bar
-        with _suppress_litellm_output(), click.progressbar(
-            videos.items(),
-            label="Processing videos",
-            item_show_func=_progress_item_label,
-        ) as progress_iter:
+        with (
+            _suppress_litellm_output(),
+            click.progressbar(
+                videos.items(),
+                label="Processing videos",
+                item_show_func=_progress_item_label,
+            ) as progress_iter,
+        ):
             for url, video in progress_iter:
                 logger.info("Processing and storing the video: %s", url)
                 videos[url] = service.upsert_video(video, playlist_title=playlist_title)
