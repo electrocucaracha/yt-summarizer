@@ -2,7 +2,7 @@
 
 ## Pull Request Checklist
 
-- [ ] I have read and followed the [CONTRIBUTING.md](CONTRIBUTING.md) guidelines.
+- [ ] I have read and followed the [CONTRIBUTING.md](../CONTRIBUTING.md) guidelines.
 - [ ] Tests have been added or updated for new functionality.
 - [ ] All tests pass locally with `uvx tox`.
 - [ ] Linting passes with `make lint`.
