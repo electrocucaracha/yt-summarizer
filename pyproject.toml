@@ -33,7 +33,7 @@ packages = ["src/yt_summarizer"]
 [tool.tox]
 legacy_tox_ini = """
 [tox]
-envlist = py312,py311,py310
+envlist = py312,py311
 skip_missing_interpreters = true
 isolated_build = true
 
