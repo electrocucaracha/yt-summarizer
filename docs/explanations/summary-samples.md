@@ -97,6 +97,7 @@ As organizations navigate regulatory, operational, and technical complexities, t
 
 ## Cloud Native & Kubernetes AI Day
 
+<!-- Markdownlint-disable MD024 -->
 ### North America 2025
 
 - **Links:** [Notion DB](https://www.notion.so/electrocucaracha/32e26c1a7255806aad58e2678956376e) · [YouTube Playlist](https://www.youtube.com/playlist?list=PLj6h78yzYM2P6ncTsfp61Chwg5wjqKgcJ)

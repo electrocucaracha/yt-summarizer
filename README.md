@@ -79,6 +79,6 @@ with these names:
 
 ## Additional Documentation
 
-- [Running the application](docs/how-to/running-application.md)
-- [Workflow explanation](docs/explanation/workflow.md)
-- [Executive summary samples](docs/explanation/summary-samples.md)
+- [Running the application](docs/how-to-guides/running-application.md)
+- [Workflow explanation](docs/explanations/workflow.md)
+- [Executive summary samples](docs/explanations/summary-samples.md)
