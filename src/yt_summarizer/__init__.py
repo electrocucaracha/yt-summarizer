@@ -38,17 +38,6 @@ from .service import YouTubeSummarizerService
 
 
 @contextlib.contextmanager
-def _temporary_logger_level(logger: logging.Logger, level: int):
-    """Temporarily set a logger level while running a scoped operation."""
-    previous_level = logger.level
-    logger.setLevel(level)
-    try:
-        yield
-    finally:
-        logger.setLevel(previous_level)
-
-
-@contextlib.contextmanager
 def _suppress_litellm_output():
     """Temporarily suppress noisy LiteLLM logging during user-facing workflows."""
     logger_names = ("LiteLLM", "LiteLLM Router", "LiteLLM Proxy", "litellm")
