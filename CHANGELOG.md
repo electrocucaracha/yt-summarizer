@@ -9,6 +9,102 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.14] - 2026-09-12
+
+### Changed
+
+- Upgraded various Python packages, pre-commit hooks, and GitHub Actions in CI workflows to their latest compatible versions, enhancing security, compatibility, and performance of development and CI environments with no breaking changes to runtime code. [1c201d13](https://github.com/electrocucaracha/yt-summarizer/commit/1c201d137f0d2d8b6afeb358cb3298ea8e9c37bf)
+
+## [3.0.13] - 2026-09-12
+
+### Changed
+
+- Streamlined date and time parsing for created_time, last_edited_time, date, formula, and rollup fields in the Notion API by removing unnecessary "Z" to "+00:00" replacement and utilizing direct fromisoformat usage where possible. [c8f25fa4](https://github.com/electrocucaracha/yt-summarizer/commit/c8f25fa467b26fc083d2b5e6ca8fc010469bbb7b)
+
+## [3.0.12] - 2026-09-02
+
+### Changed
+
+- Updated the project's dependencies to use the latest compatible versions of anyio, boto3, botocore, filelock, litellm, and regular expression, ensuring the project benefits from up-to-date bugfixes and improvements. [c92f60e0](https://github.com/electrocucaracha/yt-summarizer/commit/c92f60e04386e6c61b3beb857c81cedd69d68224)
+
+## [3.0.11] - 2026-09-02
+
+### Changed
+
+- Simplified the click.progressbar context manager for improved readability by using parentheses to group related elements, maintaining existing functionality and behavior with no breaking changes or migration requirements. [2859d9bf](https://github.com/electrocucaracha/yt-summarizer/commit/2859d9bf94583070b05a10f0eac565dd74520f5c)
+
+## [3.0.10] - 2026-09-02
+
+### Fixed
+
+- Simplified the script's handling of GitHub tag prefixes and suffixes when parsing refs from Git ls-remote, improving readability and reducing the risk of mangling tag names without introducing any functional changes. [e94b1876](https://github.com/electrocucaracha/yt-summarizer/commit/e94b1876bf40b2ef4814efc9d545939ac5ba79aa)
+
+## [3.0.9] - 2026-09-02
+
+### Changed
+
+- Aligned action version comments in CI workflows to include the leading "v" prefix, improving clarity and consistency by reducing ambiguity between SHA-pinned refs and semantic version tags. [8be5c68a](https://github.com/electrocucaracha/yt-summarizer/commit/8be5c68a1aca55ead633d171ea84f281299af360)
+
+## [3.0.8] - 2026-09-02
+
+### Changed
+
+- Upgraded the ai-prepare-commit-msg hook to v14.0.0, enabling the codebase to benefit from the latest features and improvements in commit message preparation. [c5c280db](https://github.com/electrocucaracha/yt-summarizer/commit/c5c280dbd0dfa47165312d39587112bd9b5dcfb5)
+
+## [3.0.7] - 2026-09-02
+
+### Changed
+
+- Stabilized image builds by pinning gcc and musl-dev to specific versions, reducing build-time variability and potential breakages from future package releases. [3882a0ca](https://github.com/electrocucaracha/yt-summarizer/commit/3882a0ca1a03e2d2e9bc85a45cae4c0018a2c4a9)
+
+## [3.0.6] - 2026-08-28
+
+### Changed
+
+- Updated the setup-node action to version 7.0.0 to ensure compatibility with the latest Node.js features and security patches, and standardized the renovatebot action version comment format for improved workflow documentation consistency. [113b3476](https://github.com/electrocucaracha/yt-summarizer/commit/113b34762ff055107e35c7d7cdc0f5dcce4c6a68)
+
+## [3.0.5] - 2026-08-28
+
+### Changed
+
+- Updated the pre-commit hook configuration to use the latest version of ai-prepare-commit-msg, v7.9.2, ensuring compatibility with the latest features and bugfixes. [6ca859f3](https://github.com/electrocucaracha/yt-summarizer/commit/6ca859f394d088e7ed7cfd194ed974493842bd81)
+
+## [3.0.4] - 2026-08-28
+
+### Changed
+
+- Updated project dependencies to version 2.7.1 of the `aiohappyeyeballs` package and version 3.14.3 of the `aiohttp` package, which may require users to take migration steps to ensure continued project functionality. [d2204b8e](https://github.com/electrocucaracha/yt-summarizer/commit/d2204b8e8731ad50f9c568a9446d41a6fe3152f2)
+
+## [3.0.3] - 2026-08-28
+
+### Fixed
+
+- Prevented silent failures and resource leaks by ensuring the Notion database ID is set before upserting videos and properly cleaning up temporary directories in OKF client tests. [2b95cc32](https://github.com/electrocucaracha/yt-summarizer/commit/2b95cc32cd5baeb9fe4d214dc66e3af79c3095ee)
+
+## [3.0.2] - 2026-08-28
+
+### Changed
+
+- Migrated Dockerfile dependency management to Renovate, enabling more flexibility and better visibility into dependency updates, and updated the linter workflow to install the Copilot CLI and set the required token for improved error handling. [c003dfc8](https://github.com/electrocucaracha/yt-summarizer/commit/c003dfc82a0b871a6376df2701a0eb6bca186e6a)
+
+## [3.0.1] - 2026-08-28
+
+### Changed
+
+- Enabled consistent documentation and commit message formatting through the enforcement of style guidelines and the introduction of the terminology rule in textlint. [1fb0ff1b](https://github.com/electrocucaracha/yt-summarizer/commit/1fb0ff1b88c7d55c264c20044bfa451149c89db5)
+
+## [3.0.0] - 2026-08-28
+
+### Removed
+
+- Simplified the Docker build process by removing version pinning for gcc and musl-dev, improving compatibility with upstream images and reducing maintenance overhead, with minor differences in build environments possible but ensuring smoother CI and local builds. [528becf0](https://github.com/electrocucaracha/yt-summarizer/commit/528becf036496adabd848bcb38a32960cb7385e6)
+
+## [2.2.0] - 2026-08-27
+
+### Added
+
+- Enabled comprehensive documentation of all notable changes and their context through the addition of a CHANGELOG.md following Keep a Changelog and Semantic Versioning, and relaxed Markdown linter rules to accommodate Jekyll front-matter and self-contained Markdown documents. [5a477d2b](https://github.com/electrocucaracha/yt-summarizer/commit/5a477d2b3ba0ab998674076d884d574dc01cec5b)
+
 ## [2.1.0] - 2026-08-27
 
 ### Added
