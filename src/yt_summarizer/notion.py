@@ -116,18 +116,12 @@ class Client:
         if prop_type == "created_time":
             # Timestamp of creation - convert to ISO format
             ct = prop_item.get("created_time")
-            return (
-                datetime.fromisoformat(ct.replace("Z", "+00:00")).isoformat()
-                if ct
-                else ""
-            )
+            return datetime.fromisoformat(ct).isoformat() if ct else ""
         if prop_type == "date":
             # Date property - extract start date and convert to ISO format
             date_obj = prop_item.get("date")
             return (
-                datetime.fromisoformat(
-                    date_obj["start"].replace("Z", "+00:00")
-                ).isoformat()
+                datetime.fromisoformat(date_obj["start"].isoformat()).isoformat()
                 if date_obj
                 else ""
             )
@@ -167,11 +161,7 @@ class Client:
         if prop_type == "last_edited_time":
             # Timestamp of last edit - convert to ISO format
             let = prop_item.get("last_edited_time")
-            return (
-                datetime.fromisoformat(let.replace("Z", "+00:00")).isoformat()
-                if let
-                else ""
-            )
+            return datetime.fromisoformat(let.isoformat()).isoformat() if let else ""
         if prop_type == "title":
             # Title property - extract plain text content
             return prop_item.get("title", {}).get("plain_text", "")
@@ -197,9 +187,7 @@ class Client:
             if formula_type == "date":
                 date_obj = formula.get("date")
                 return (
-                    datetime.fromisoformat(
-                        date_obj["start"].replace("Z", "+00:00")
-                    ).isoformat()
+                    datetime.fromisoformat(date_obj["start"].isoformat()).isoformat()
                     if date_obj and date_obj.get("start")
                     else "???"
                 )
@@ -214,9 +202,7 @@ class Client:
             if rollup_type == "date":
                 date_obj = rollup.get("date")
                 return (
-                    datetime.fromisoformat(
-                        date_obj["start"].replace("Z", "+00:00")
-                    ).isoformat()
+                    datetime.fromisoformat(date_obj["start"].isoformat()).isoformat()
                     if date_obj and date_obj.get("start")
                     else "???"
                 )
