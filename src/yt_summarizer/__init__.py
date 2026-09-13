@@ -183,9 +183,7 @@ def _process_playlist(
     click.echo("")
 
     if output_dir:
-        _merge_stored_videos(
-            service.get_videos_from_filesystem(playlist_title), videos
-        )
+        _merge_stored_videos(service.get_videos_from_filesystem(playlist_title), videos)
 
     added_count = 0
     skipped_count = 0

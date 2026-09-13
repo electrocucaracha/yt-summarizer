@@ -125,7 +125,9 @@ def _render_mapping_scalar(value: Any) -> str:
     """Render a scalar nested in a frontmatter mapping."""
     if isinstance(value, str) and (
         ": " in value
-        or value.startswith(("@", "%", "[", "{", "*", "&", "?", "|", ">", '"', "'", "#"))
+        or value.startswith(
+            ("@", "%", "[", "{", "*", "&", "?", "|", ">", '"', "'", "#")
+        )
         or "\n" in value
     ):
         return _escape_yaml(value)
@@ -165,6 +167,7 @@ def _format_summary(text: str) -> str:
         if sentence.strip()
     ]
     return "\n".join(sentences) if sentences else "_Not available yet._"
+
 
 def _format_main_points_table(text: str) -> str:
     """Format main points as a Markdown table complying with OKF v0.2."""
