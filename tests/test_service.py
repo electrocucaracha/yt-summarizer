@@ -164,6 +164,49 @@ class TestYouTubeSummarizerService(unittest.TestCase):
         self.assertEqual("Example summary", videos[0].summary)
         self.assertEqual("- point", videos[0].main_points)
 
+    def test_upsert_video_skips_processing_when_already_summarized(self):
+        """When a video is already summarized, LLM and transcript extraction are skipped."""
+        video = YouTubeVideo(
+            url="https://example.com/video1",
+            title="Video 1",
+            summary="Existing summary",
+            main_points="| # | Main point |\n| -: | - |\n| 1 | point 1 |",
+        )
+        self.service.okf_client = MagicMock()
+        self.service.okf_client.has_video.return_value = True
+        self.service.youtube_client = MagicMock()
+        self.service.llm_client = MagicMock()
+
+        result = self.service.upsert_video(video, playlist_title="K8s")
+
+        self.assertEqual(video.summary, result.summary)
+        self.service.youtube_client.get_video_transcript.assert_not_called()
+        self.service.llm_client.summarize.assert_not_called()
+        self.service.llm_client.get_main_points.assert_not_called()
+        self.service.okf_client.write_video.assert_not_called()
+
+    def test_upsert_video_writes_to_filesystem_if_missing(self):
+        """When a video has a summary but is missing on the filesystem, it is written."""
+        video = YouTubeVideo(
+            url="https://example.com/video1",
+            title="Video 1",
+            summary="Existing summary",
+            main_points="| # | Main point |\n| -: | - |\n| 1 | point 1 |",
+        )
+        self.service.okf_client = MagicMock()
+        self.service.okf_client.has_video.return_value = False
+        self.service.youtube_client = MagicMock()
+        self.service.llm_client = MagicMock()
+
+        result = self.service.upsert_video(video, playlist_title="K8s")
+
+        self.assertEqual(video.summary, result.summary)
+        self.service.youtube_client.get_video_transcript.assert_not_called()
+        self.service.llm_client.summarize.assert_not_called()
+        self.service.okf_client.write_video.assert_called_once_with(
+            video, playlist_title="K8s"
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

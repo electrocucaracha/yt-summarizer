@@ -21,6 +21,7 @@ complete pipeline for summarizing videos. This service ensures seamless integrat
 of all components for efficient video summarization.
 """
 
+import copy
 import logging
 
 import click
@@ -198,8 +199,9 @@ class YouTubeSummarizerService:
     def _process_video(self, video: YouTubeVideo) -> YouTubeVideo:
         """Populate missing title, summary, and main points for one video.
 
-        The in-memory object is updated directly: the caller already owns the
-        video record and we only persist the final state once it has changed.
+        The original ``video`` instance is deep-copied before enrichment. The
+        transcript is fetched only when needed for summary or main-point
+        generation and is not stored back on the returned object.
 
         Args:
             video: A YouTubeVideo object with potentially incomplete data.
@@ -208,30 +210,34 @@ class YouTubeSummarizerService:
             The updated YouTubeVideo object with all fields populated.
         """
         logger.debug("Processing video: %s", video.url)
+        result = copy.deepcopy(
+            video
+        )  # Create a copy to avoid mutating the original object
 
-        if not video.title or video.title == "Title not found":
-            logger.debug("Fetching missing metadata for video: %s", video.url)
-            video.title = self.youtube_client.get_video_title(url=video.url)
+        # Fetch missing metadata from YouTube
+        if not result.title or result.title == "Title not found":
+            logger.debug("Fetching missing metadata for video: %s", result.url)
+            result.title = self.youtube_client.get_video_title(url=result.url)
 
         transcript = None
-        needs_transcript = not video.summary or not video.main_points
+        needs_transcript = not result.summary or not result.main_points
         if needs_transcript:
             transcript = self._fetch_with_retries(
-                self.youtube_client.get_video_transcript, url=video.url
+                self.youtube_client.get_video_transcript, url=result.url
             )
             if not transcript:
                 logger.warning(
-                    "Skipping video due to transcript fetch failure: %s", video.url
+                    "Skipping video due to transcript fetch failure: %s", result.url
                 )
             else:
-                if not video.summary:
-                    logger.info("Generating summary for video: %s", video.url)
-                    video.summary = self.llm_client.summarize(transcript)
-                if not video.main_points:
-                    logger.info("Extracting main points for video: %s", video.url)
-                    video.main_points = self.llm_client.get_main_points(transcript)
+                if not result.summary:
+                    logger.info("Generating summary for video: %s", result.url)
+                    result.summary = self.llm_client.summarize(transcript)
+                if not result.main_points:
+                    logger.info("Extracting main points for video: %s", result.url)
+                    result.main_points = self.llm_client.get_main_points(transcript)
 
-        return video
+        return result
 
     def get_videos_from_filesystem(self, playlist_title: str | None = None):
         """Load already summarized videos from the OKF bundle on disk.
@@ -276,7 +282,17 @@ class YouTubeSummarizerService:
             self._upsert_video_in_notion(updated_video)
             self._upsert_video_in_filesystem(updated_video, playlist_title)
         else:
-            logger.info("No changes detected for video: %s", video.url)
+            if (
+                self.okf_client
+                and updated_video.summary
+                and not self.okf_client.has_video(updated_video, playlist_title)
+            ):
+                logger.info(
+                    "Video missing on filesystem. Writing concept to OKF bundle."
+                )
+                self._upsert_video_in_filesystem(updated_video, playlist_title)
+            else:
+                logger.info("No changes detected for video: %s", video.url)
 
         return updated_video
 
