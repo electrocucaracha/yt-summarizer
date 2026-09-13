@@ -21,11 +21,11 @@ frontmatter, as described by the OKF specification (https://okf.md/spec/).
 The generated layout is::
 
     docs/
+    ├── _config.yml                 # Theme configuration
+    ├── log.md                      # Directory update log
     ├── index.md                    # Bundle index listing every playlist
-    ├── <playlist>.md               # Playlist concept (executive summary)
     └── <playlist>/
         ├── index.md                # Playlist index listing every video
-        ├── README.md               # Executive summary plus every video summary
         └── <video-id>.md           # One concept per video
 
 This backend is an alternative to Notion, so the application can run without
@@ -36,6 +36,7 @@ import logging
 import re
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 from urllib.parse import parse_qs, urlparse
 
 from .model import YouTubeVideo
@@ -44,10 +45,10 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_ROOT = "docs"
 DEFAULT_PLAYLIST_TITLE = "Videos"
-OKF_VERSION = "0.1"
+OKF_VERSION = "0.2"
 PLAYLIST_TYPE = "YouTube Playlist"
-VIDEO_TYPE = "YouTube Video"
-_RESERVED_FILENAMES = frozenset({"index.md", "log.md", "README.md"})
+VIDEO_TYPE = "Video Note"
+_RESERVED_FILENAMES = frozenset({"index.md", "log.md", "_config.yml", "README.md"})
 
 
 def slugify(value: str) -> str:
@@ -89,13 +90,75 @@ def _escape_yaml(value: str) -> str:
     return '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
 
 
-def _render_frontmatter(fields: dict[str, str]) -> str:
+def _render_frontmatter(fields: dict[str, Any]) -> str:
     """Render an ordered mapping as a YAML frontmatter block."""
     lines = ["---"]
     for key, value in fields.items():
-        lines.append(f"{key}: {_escape_yaml(value)}")
+        if isinstance(value, list):
+            items = ", ".join(
+                _escape_yaml(x) if isinstance(x, str) else str(x) for x in value
+            )
+            lines.append(f"{key}: [{items}]")
+        elif isinstance(value, dict):
+            items = ", ".join(
+                f"{k}: {_escape_yaml(v) if isinstance(v, str) and ' ' in v else v}"
+                for k, v in value.items()
+            )
+            lines.append(f"{key}: {{ {items} }}")
+        elif isinstance(value, str):
+            if key == "type":
+                lines.append(f"{key}: {value}")
+            else:
+                lines.append(f"{key}: {_escape_yaml(value)}")
+        else:
+            lines.append(f"{key}: {value}")
     lines.append("---")
     return "\n".join(lines)
+
+
+def _format_summary(text: str) -> str:
+    """Format summary text into semantic sentences, one per line."""
+    if not text or not text.strip():
+        return "_Not available yet._"
+    sentences = [
+        sentence.strip()
+        for sentence in re.split(r"(?<=[.!?])\s+", " ".join(text.split()))
+        if sentence.strip()
+    ]
+    return "\n".join(sentences) if sentences else "_Not available yet._"
+
+
+def _format_main_points_table(text: str) -> str:
+    """Format main points as a Markdown table complying with OKF v0.2."""
+    if not text or not text.strip():
+        return (
+            "|   # | Main point |\n| --: | ---------- |\n|   1 | _Not available yet._ |"
+        )
+
+    stripped = text.strip()
+    if "|   # | Main point |" in stripped or ("|" in stripped and "\n|" in stripped):
+        return stripped
+
+    points = []
+    for line in stripped.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        cleaned = re.sub(r"^([*+\-\d\w]+[.)\]]?\s*)+", "", line).strip()
+        if cleaned:
+            points.append(cleaned)
+
+    if not points:
+        return (
+            "|   # | Main point |\n| --: | ---------- |\n|   1 | _Not available yet._ |"
+        )
+
+    table_lines = ["|   # | Main point |", "| --: | ---------- |"]
+    for idx, point in enumerate(points, 1):
+        clean_point = point.replace("|", "\\|").strip()
+        table_lines.append(f"| {idx:3d} | {clean_point} |")
+
+    return "\n".join(table_lines)
 
 
 def _parse_frontmatter(content: str) -> dict[str, str]:
@@ -214,19 +277,25 @@ class Client:
         path = self._video_path(playlist_title, video)
         path.parent.mkdir(parents=True, exist_ok=True)
 
+        playlist_slug = slugify(playlist_title or DEFAULT_PLAYLIST_TITLE)
         frontmatter = _render_frontmatter(
             {
                 "type": VIDEO_TYPE,
                 "title": video.title or video.url,
                 "description": _first_sentence(video.summary),
                 "resource": video.url,
-                "timestamp": _now(),
+                "tags": [playlist_slug, "video", "learning"],
+                "status": "stable",
+                "generated": {
+                    "by": "process:yt-summarizer-okf",
+                    "at": _now(),
+                },
             }
         )
         body = (
-            f"# Summary\n\n{video.summary or '_Not available yet._'}\n\n"
-            f"# Main Points\n\n{video.main_points or '_Not available yet._'}\n\n"
-            f"# Citations\n\n[1] [{video.title or 'YouTube video'}]({video.url})\n"
+            f"# Summary\n\n{_format_summary(video.summary)}\n\n"
+            f"# Main Points\n\n{_format_main_points_table(video.main_points)}\n\n"
+            f"# Video\n\n[Watch on YouTube]({video.url})\n"
         )
         path.write_text(f"{frontmatter}\n\n{body}", encoding="utf-8")
         logger.debug("Wrote video concept: %s", path)
@@ -239,7 +308,7 @@ class Client:
         playlist_summary: str = "",
         playlist_url: str | None = None,
     ) -> Path:
-        """Write the playlist concept, its index, and the bundle root index.
+        """Write the playlist index and the bundle root index conforming to OKF v0.2.
 
         Args:
             videos: Videos belonging to the playlist.
@@ -248,77 +317,89 @@ class Client:
             playlist_url: Canonical playlist URL, when known.
 
         Returns:
-            The path of the playlist concept document.
+            The path of the playlist index document.
         """
         title = playlist_title or DEFAULT_PLAYLIST_TITLE
         slug = slugify(title)
         directory = self.playlist_dir(title)
         directory.mkdir(parents=True, exist_ok=True)
 
-        fields = {
-            "type": PLAYLIST_TYPE,
-            "title": title,
-            "description": _first_sentence(playlist_summary),
-            "timestamp": _now(),
-        }
-        if playlist_url:
-            fields["resource"] = playlist_url
+        self._write_config_yml()
+        self._write_log_md()
+
+        # Clean up legacy files if present
+        legacy_file = self.root / f"{slug}.md"
+        if legacy_file.is_file():
+            legacy_file.unlink()
+        legacy_readme = directory / "README.md"
+        if legacy_readme.is_file():
+            legacy_readme.unlink()
 
         entries = "\n".join(
-            f"* [{video.title or video.url}](/{slug}/{extract_video_id(video.url)}.md)"
+            f"- [{video.title or video.url}]({extract_video_id(video.url)}.md)"
             f" - {_first_sentence(video.summary)}".rstrip(" -")
             for video in videos
         )
-        playlist_path = self.root / f"{slug}.md"
-        playlist_path.write_text(
-            f"{_render_frontmatter(fields)}\n\n"
-            f"# Executive Summary\n\n{playlist_summary or '_Not available yet._'}\n\n"
-            f"# Videos\n\n{entries}\n",
+
+        playlist_index_path = directory / "index.md"
+        playlist_index_path.write_text(
+            f"# {title}\n\n## Concepts\n\n{entries}\n",
             encoding="utf-8",
         )
 
-        (directory / "index.md").write_text(
-            f"# {title}\n\n{entries}\n", encoding="utf-8"
-        )
-        self._write_playlist_readme(directory, title, playlist_summary, videos)
         self._write_root_index()
-        logger.info("Wrote OKF playlist bundle: %s", playlist_path)
-        return playlist_path
+        logger.info("Wrote OKF playlist bundle: %s", playlist_index_path)
+        return playlist_index_path
 
-    def _write_playlist_readme(
-        self,
-        directory: Path,
-        title: str,
-        playlist_summary: str,
-        videos: list[YouTubeVideo],
-    ) -> None:
-        """Write the playlist README aggregating the summary of every concept."""
-        sections = []
-        for video in videos:
-            heading = video.title or video.url
-            sections.append(
-                f"### [{heading}]({extract_video_id(video.url)}.md)\n\n"
-                f"Source: <{video.url}>\n\n"
-                f"{video.summary or '_Not available yet._'}"
+    def _write_config_yml(self) -> None:
+        """Write docs/_config.yml for theme support."""
+        config_path = self.root / "_config.yml"
+        if not config_path.is_file():
+            config_path.write_text(
+                "remote_theme: just-the-docs/just-the-docs\n"
+                "enable_copy_code_button: true\n",
+                encoding="utf-8",
             )
 
-        (directory / "README.md").write_text(
-            f"# {title}\n\n"
-            f"## Executive Summary\n\n{playlist_summary or '_Not available yet._'}\n\n"
-            f"## Video Summaries\n\n" + "\n\n".join(sections) + "\n",
-            encoding="utf-8",
-        )
+    def _write_log_md(self) -> None:
+        """Write or maintain docs/log.md for bundle updates."""
+        log_path = self.root / "log.md"
+        if not log_path.is_file():
+            today = datetime.now(UTC).strftime("%Y-%m-%d")
+            log_path.write_text(
+                "# Directory Update Log\n\n"
+                f"## {today}\n\n"
+                "- **Creation**: Built the OKF v0.2 knowledge bundle from YouTube videos.\n",
+                encoding="utf-8",
+            )
 
     def _write_root_index(self) -> None:
-        """Regenerate the bundle root index from the playlist concepts."""
+        """Regenerate the bundle root index from the playlist directories."""
         entries = []
-        for path in sorted(self.root.glob("*.md")):
-            if path.name in _RESERVED_FILENAMES:
-                continue
-            fields = _parse_frontmatter(path.read_text(encoding="utf-8"))
-            title = fields.get("title", path.stem)
-            description = fields.get("description", "")
-            entries.append(f"* [{title}]({path.name}) - {description}".rstrip(" -"))
+        if self.root.is_dir():
+            for path in sorted(self.root.iterdir()):
+                if not path.is_dir() or path.name.startswith("."):
+                    continue
+                index_path = path / "index.md"
+                if not index_path.is_file():
+                    continue
+
+                concept_count = sum(
+                    1 for f in path.glob("*.md") if f.name not in _RESERVED_FILENAMES
+                )
+                note_label = (
+                    "1 note" if concept_count == 1 else f"{concept_count} notes"
+                )
+
+                title = path.name.replace("-", " ").title()
+                content = index_path.read_text(encoding="utf-8")
+                match = re.search(r"^#\s+(.+)$", content, re.MULTILINE)
+                if match:
+                    title = match.group(1).strip()
+
+                entries.append(
+                    f"- [{title} ({note_label})]({path.name}/index.md) - Topic collection"
+                )
 
         (self.root / "index.md").write_text(
             f'---\nokf_version: "{OKF_VERSION}"\n---\n\n'
