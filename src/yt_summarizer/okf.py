@@ -69,15 +69,16 @@ def extract_video_id(url: str) -> str:
 
     Examples:
         >>> extract_video_id("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
-        'dQw4w9WgXcQ'
+        'dqw4w9wgxcq'
         >>> extract_video_id("https://youtu.be/dQw4w9WgXcQ")
-        'dQw4w9WgXcQ'
+        'dqw4w9wgxcq'
     """
     parsed = urlparse(url)
     video_id = parse_qs(parsed.query).get("v", [""])[0]
     if not video_id:
         video_id = parsed.path.rsplit("/", 1)[-1]
-    return video_id or slugify(url)
+    video_id = video_id.strip()
+    return video_id.lower() if video_id else slugify(url)
 
 
 def _escape_yaml(value: str) -> str:
@@ -94,22 +95,79 @@ def _render_frontmatter(fields: dict[str, Any]) -> str:
     """Render an ordered mapping as a YAML frontmatter block."""
     lines = ["---"]
     for key, value in fields.items():
+        if value is None:
+            continue
         if isinstance(value, list):
-            items = ", ".join(
-                _escape_yaml(x) if isinstance(x, str) else str(x) for x in value
-            )
-            lines.append(f"{key}: [{items}]")
+            lines.append(f"{key}:")
+            for item in value:
+                lines.append(f"  - {item}")
         elif isinstance(value, dict):
-            items = ", ".join(
-                f"{k}: {_escape_yaml(v) if isinstance(v, str) and ' ' in v else v}"
-                for k, v in value.items()
-            )
-            lines.append(f"{key}: {{ {items} }}")
+            lines.append(f"{key}:")
+            for k, v in value.items():
+                if isinstance(v, str) and (
+                    ": " in v
+                    or v.startswith(
+                        (
+                            "@",
+                            "%",
+                            "[",
+                            "{",
+                            "*",
+                            "&",
+                            "?",
+                            "|",
+                            ">",
+                            '"',
+                            "'",
+                            "#",
+                        )
+                    )
+                    or "\n" in v
+                ):
+                    lines.append(f"  {k}: {_escape_yaml(v)}")
+                else:
+                    lines.append(f"  {k}: {v}")
         elif isinstance(value, str):
-            if key == "type":
+            if key in {"type", "layout", "status"}:
                 lines.append(f"{key}: {value}")
-            else:
+            elif key == "okf_version":
+                lines.append(f'{key}: "{value}"')
+            elif (
+                any(
+                    c in value
+                    for c in (
+                        ":",
+                        '"',
+                        "\\",
+                        "{",
+                        "}",
+                        "[",
+                        "]",
+                        ",",
+                        "&",
+                        "*",
+                        "#",
+                        "?",
+                        "|",
+                        "-",
+                        "<",
+                        ">",
+                        "=",
+                        "!",
+                        "%",
+                        "@",
+                        "`",
+                        "\n",
+                    )
+                )
+                or value.startswith(" ")
+                or value.endswith(" ")
+            ):
                 lines.append(f"{key}: {_escape_yaml(value)}")
+            else:
+                lines.append(f"{key}: {value}")
+        elif isinstance(value, bool):
+            lines.append(f"{key}: {'true' if value else 'false'}")
         else:
             lines.append(f"{key}: {value}")
     lines.append("---")
@@ -161,7 +219,7 @@ def _format_main_points_table(text: str) -> str:
     return "\n".join(table_lines)
 
 
-def _parse_frontmatter(content: str) -> dict[str, str]:
+def _parse_frontmatter(content: str) -> dict[str, Any]:
     """Parse the frontmatter emitted by :func:`_render_frontmatter`.
 
     Examples:
@@ -177,7 +235,16 @@ def _parse_frontmatter(content: str) -> dict[str, str]:
     if not separator:
         return {}
 
-    fields = {}
+    try:
+        import yaml
+
+        data = yaml.safe_load(block)
+        if isinstance(data, dict):
+            return data
+    except (yaml.YAMLError, AttributeError, ValueError) as err:
+        logger.debug("Failed to parse YAML frontmatter with PyYAML: %s", err)
+
+    fields: dict[str, Any] = {}
     for line in block.splitlines():
         key, delimiter, value = line.partition(":")
         if not delimiter:
@@ -225,6 +292,32 @@ class Client:
     def _video_path(self, playlist_title: str | None, video: YouTubeVideo) -> Path:
         return self.playlist_dir(playlist_title) / f"{extract_video_id(video.url)}.md"
 
+    def has_video(self, video: YouTubeVideo, playlist_title: str | None = None) -> bool:
+        """Check if a video note already exists on the filesystem and has a summary."""
+        path = self._video_path(playlist_title, video)
+        if not path.is_file():
+            return False
+        content = path.read_text(encoding="utf-8")
+        summary = _extract_section(content, "Summary")
+        return bool(summary and summary.strip() and summary != "_Not available yet._")
+
+    def get_video(
+        self, video: YouTubeVideo, playlist_title: str | None = None
+    ) -> YouTubeVideo | None:
+        """Read back an existing video concept from the filesystem, if present."""
+        path = self._video_path(playlist_title, video)
+        if not path.is_file():
+            return None
+        content = path.read_text(encoding="utf-8")
+        fields = _parse_frontmatter(content)
+        url = str(fields.get("resource", video.url))
+        return YouTubeVideo(
+            url=url,
+            title=str(fields.get("title", video.title or "")),
+            summary=_extract_section(content, "Summary"),
+            main_points=_extract_section(content, "Main Points"),
+        )
+
     def get_videos(self, playlist_title: str | None = None) -> list[YouTubeVideo]:
         """Load every video concept already stored for a playlist.
 
@@ -246,14 +339,14 @@ class Client:
                 continue
             content = path.read_text(encoding="utf-8")
             fields = _parse_frontmatter(content)
-            url = fields.get("resource", "")
+            url = str(fields.get("resource", ""))
             if not url:
                 logger.warning("Skipping %s: no 'resource' URL in frontmatter", path)
                 continue
             videos.append(
                 YouTubeVideo(
                     url=url,
-                    title=fields.get("title", ""),
+                    title=str(fields.get("title", "")),
                     summary=_extract_section(content, "Summary"),
                     main_points=_extract_section(content, "Main Points"),
                 )
@@ -263,13 +356,17 @@ class Client:
         return videos
 
     def write_video(
-        self, video: YouTubeVideo, playlist_title: str | None = None
+        self,
+        video: YouTubeVideo,
+        playlist_title: str | None = None,
+        nav_order: int | None = None,
     ) -> Path:
         """Write a single video concept document.
 
         Args:
             video: The video to persist.
             playlist_title: Playlist the video belongs to.
+            nav_order: Optional navigation order within the playlist.
 
         Returns:
             The path of the written markdown file.
@@ -277,11 +374,19 @@ class Client:
         path = self._video_path(playlist_title, video)
         path.parent.mkdir(parents=True, exist_ok=True)
 
-        playlist_slug = slugify(playlist_title or DEFAULT_PLAYLIST_TITLE)
-        frontmatter = _render_frontmatter(
+        title = playlist_title or DEFAULT_PLAYLIST_TITLE
+        playlist_slug = slugify(title)
+
+        frontmatter_fields: dict[str, Any] = {
+            "layout": "default",
+            "title": video.title or video.url,
+        }
+        if nav_order is not None:
+            frontmatter_fields["nav_order"] = nav_order
+        frontmatter_fields.update(
             {
+                "parent": title,
                 "type": VIDEO_TYPE,
-                "title": video.title or video.url,
                 "description": _first_sentence(video.summary),
                 "resource": video.url,
                 "tags": [playlist_slug, "video", "learning"],
@@ -292,6 +397,7 @@ class Client:
                 },
             }
         )
+        frontmatter = _render_frontmatter(frontmatter_fields)
         body = (
             f"# Summary\n\n{_format_summary(video.summary)}\n\n"
             f"# Main Points\n\n{_format_main_points_table(video.main_points)}\n\n"
@@ -308,7 +414,7 @@ class Client:
         playlist_summary: str = "",
         playlist_url: str | None = None,
     ) -> Path:
-        """Write the playlist index and the bundle root index conforming to OKF v0.2.
+        """Write the playlist index, executive report, and bundle root index.
 
         Args:
             videos: Videos belonging to the playlist.
@@ -327,29 +433,98 @@ class Client:
         self._write_config_yml()
         self._write_log_md()
 
-        # Clean up legacy files if present
+        # Clean up legacy root-level markdown file if present
         legacy_file = self.root / f"{slug}.md"
         if legacy_file.is_file():
             legacy_file.unlink()
-        legacy_readme = directory / "README.md"
-        if legacy_readme.is_file():
-            legacy_readme.unlink()
 
-        entries = "\n".join(
-            f"- [{video.title or video.url}]({extract_video_id(video.url)}.md)"
-            f" - {_first_sentence(video.summary)}".rstrip(" -")
-            for video in videos
+        # Write or update README.md (Executive Report) if playlist_summary is available
+        if playlist_summary and playlist_summary.strip():
+            self._write_executive_report(directory, title, slug, playlist_summary)
+        else:
+            legacy_readme = directory / "README.md"
+            if legacy_readme.is_file():
+                legacy_readme.unlink()
+
+        # Write/update individual video concepts with nav_order
+        for idx, video in enumerate(videos, 1):
+            if not self._video_path(title, video).is_file() or video.summary:
+                self.write_video(video, playlist_title=title, nav_order=idx)
+
+        entries = []
+        for video in videos:
+            vid_id = extract_video_id(video.url)
+            summary_desc = _first_sentence(video.summary)
+            entry_line = f"- [{video.title or video.url}]({vid_id}.md)"
+            if summary_desc:
+                entry_line += f" - {summary_desc}"
+            entries.append(entry_line)
+
+        playlist_nav_order = self._get_playlist_nav_order(slug)
+        playlist_frontmatter = _render_frontmatter(
+            {
+                "layout": "default",
+                "title": title,
+                "has_children": True,
+                "nav_order": playlist_nav_order,
+                "okf_version": OKF_VERSION,
+            }
         )
 
         playlist_index_path = directory / "index.md"
         playlist_index_path.write_text(
-            f"# {title}\n\n## Concepts\n\n{entries}\n",
+            f"{playlist_frontmatter}\n\n"
+            f"# {title}\n\n## Concepts\n\n" + "\n".join(entries) + "\n",
             encoding="utf-8",
         )
 
         self._write_root_index()
         logger.info("Wrote OKF playlist bundle: %s", playlist_index_path)
         return playlist_index_path
+
+    def _write_executive_report(
+        self, directory: Path, title: str, slug: str, summary: str
+    ) -> Path:
+        """Write the executive report README.md inside the playlist folder."""
+        readme_path = directory / "README.md"
+        frontmatter = _render_frontmatter(
+            {
+                "layout": "default",
+                "title": f"Executive Report: {title}",
+                "parent": title,
+                "nav_order": 1,
+                "type": "Executive Report",
+                "okf_version": OKF_VERSION,
+                "description": f"Executive report and summary of the {title} conference.",
+                "tags": [slug, "executive-report"],
+                "status": "stable",
+            }
+        )
+        formatted_summary = _format_summary(summary)
+        body = (
+            f"# Executive Report: {title}\n\n"
+            f"## Executive Overview\n\n"
+            f"{formatted_summary}\n"
+        )
+        readme_path.write_text(f"{frontmatter}\n\n{body}", encoding="utf-8")
+        return readme_path
+
+    def _get_playlist_nav_order(self, current_slug: str) -> int:
+        """Return the 1-based navigation order for a playlist within the bundle."""
+        if not self.root.is_dir():
+            return 2
+        playlist_slugs = sorted(
+            p.name
+            for p in self.root.iterdir()
+            if p.is_dir() and not p.name.startswith(".") and "assets" not in p.parts
+        )
+        if current_slug not in playlist_slugs:
+            playlist_slugs.append(current_slug)
+            playlist_slugs.sort()
+        try:
+            return playlist_slugs.index(current_slug) + 2
+        except ValueError:
+            return 2
 
     def _write_config_yml(self) -> None:
         """Write docs/_config.yml for theme support."""
@@ -366,7 +541,15 @@ class Client:
         log_path = self.root / "log.md"
         if not log_path.is_file():
             today = datetime.now(UTC).strftime("%Y-%m-%d")
+            frontmatter = _render_frontmatter(
+                {
+                    "layout": "default",
+                    "title": "Directory Update Log",
+                    "nav_exclude": True,
+                }
+            )
             log_path.write_text(
+                f"{frontmatter}\n\n"
                 "# Directory Update Log\n\n"
                 f"## {today}\n\n"
                 "- **Creation**: Built the OKF v0.2 knowledge bundle from YouTube videos.\n",
@@ -378,7 +561,11 @@ class Client:
         entries = []
         if self.root.is_dir():
             for path in sorted(self.root.iterdir()):
-                if not path.is_dir() or path.name.startswith("."):
+                if (
+                    not path.is_dir()
+                    or path.name.startswith(".")
+                    or "assets" in path.parts
+                ):
                     continue
                 index_path = path / "index.md"
                 if not index_path.is_file():
@@ -401,9 +588,19 @@ class Client:
                     f"- [{title} ({note_label})]({path.name}/index.md) - Topic collection"
                 )
 
+        root_frontmatter = _render_frontmatter(
+            {
+                "layout": "default",
+                "title": "Home",
+                "nav_order": 1,
+                "okf_version": OKF_VERSION,
+            }
+        )
+
         (self.root / "index.md").write_text(
-            f'---\nokf_version: "{OKF_VERSION}"\n---\n\n'
-            "# Playlists\n\n" + "\n".join(entries) + "\n",
+            f"{root_frontmatter}\n\n"
+            "# Conference Knowledge Collections\n\n"
+            "## Collections\n\n" + "\n".join(entries) + "\n",
             encoding="utf-8",
         )
 
