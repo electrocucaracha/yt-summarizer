@@ -31,10 +31,12 @@ class TestOKFClient(unittest.TestCase):
         self.assertEqual(self.root / "k8s-weekly" / "video1.md", path)
         content = path.read_text(encoding="utf-8")
         self.assertTrue(content.startswith("---\n"))
-        self.assertIn('type: "YouTube Video"', content)
+        self.assertIn("type: Video Note", content)
         self.assertIn(f'resource: "{self.video.url}"', content)
         self.assertIn("# Summary", content)
         self.assertIn("# Main Points", content)
+        self.assertIn("|   # | Main point |", content)
+        self.assertIn("# Video", content)
 
     def test_get_videos_round_trips_written_concepts(self):
         """Videos written to the bundle should be readable back."""
@@ -45,8 +47,8 @@ class TestOKFClient(unittest.TestCase):
         self.assertEqual(1, len(videos))
         self.assertEqual(self.video.url, videos[0].url)
         self.assertEqual(self.video.title, videos[0].title)
-        self.assertEqual(self.video.summary, videos[0].summary)
-        self.assertEqual(self.video.main_points, videos[0].main_points)
+        self.assertIn("A short intro.", videos[0].summary)
+        self.assertIn("|   # | Main point |", videos[0].main_points)
 
     def test_get_videos_returns_empty_list_for_unknown_playlist(self):
         """Missing playlist folders should not raise."""
@@ -63,34 +65,32 @@ class TestOKFClient(unittest.TestCase):
             playlist_url="https://youtube.com/playlist?list=abc123",
         )
 
-        self.assertEqual(self.root / "k8s-weekly.md", playlist_path)
-        playlist_content = playlist_path.read_text(encoding="utf-8")
-        self.assertIn('type: "YouTube Playlist"', playlist_content)
-        self.assertIn("(/k8s-weekly/video1.md)", playlist_content)
+        self.assertEqual(self.root / "k8s-weekly" / "index.md", playlist_path)
 
         playlist_index = (self.root / "k8s-weekly" / "index.md").read_text(
             encoding="utf-8"
         )
         self.assertIn("# K8s Weekly", playlist_index)
-        self.assertIn("(/k8s-weekly/video1.md)", playlist_index)
+        self.assertIn("## Concepts", playlist_index)
+        self.assertIn("- [Intro to Kubernetes](video1.md)", playlist_index)
 
         root_index = (self.root / "index.md").read_text(encoding="utf-8")
-        self.assertIn('okf_version: "0.1"', root_index)
-        self.assertIn("[K8s Weekly](k8s-weekly.md)", root_index)
+        self.assertIn('okf_version: "0.2"', root_index)
+        self.assertIn("- [K8s Weekly (1 note)](k8s-weekly/index.md)", root_index)
 
-    def test_write_playlist_creates_readme_with_every_video_summary(self):
-        """The playlist folder should include a README aggregating all summaries."""
+    def test_write_playlist_creates_config_and_log(self):
+        """The bundle root should include _config.yml and log.md."""
         self.client.write_playlist(
             [self.video],
             playlist_title="K8s Weekly",
             playlist_summary="Everything about Kubernetes.",
         )
 
-        readme = (self.root / "k8s-weekly" / "README.md").read_text(encoding="utf-8")
-        self.assertIn("# K8s Weekly", readme)
-        self.assertIn("## Executive Summary\n\nEverything about Kubernetes.", readme)
-        self.assertIn("### [Intro to Kubernetes](video1.md)", readme)
-        self.assertIn(self.video.summary, readme)
+        config_content = (self.root / "_config.yml").read_text(encoding="utf-8")
+        self.assertIn("remote_theme: just-the-docs/just-the-docs", config_content)
+
+        log_content = (self.root / "log.md").read_text(encoding="utf-8")
+        self.assertIn("# Directory Update Log", log_content)
 
     def test_get_videos_ignores_reserved_files(self):
         """Reserved bundle files should never be read back as video concepts."""
