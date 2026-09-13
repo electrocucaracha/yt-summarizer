@@ -33,8 +33,20 @@ import litellm
 from click.core import ParameterSource
 
 from .llm import LLMConnectionError
+from .model import YouTubeVideo
 from .okf import DEFAULT_ROOT as DEFAULT_OUTPUT_DIR
 from .service import YouTubeSummarizerService
+
+
+@contextlib.contextmanager
+def _temporary_logger_level(logger: logging.Logger, level: int):
+    """Temporarily set a logger level while running a scoped operation."""
+    previous_level = logger.level
+    logger.setLevel(level)
+    try:
+        yield
+    finally:
+        logger.setLevel(previous_level)
 
 
 @contextlib.contextmanager
@@ -126,7 +138,13 @@ def _read_token_from_file(file_path: str) -> str:
         ) from exc
 
 
-def _process_playlist(service, playlist_url: str, videos: dict, logger) -> str:
+def _process_playlist(
+    service: YouTubeSummarizerService,
+    playlist_url: str,
+    videos: dict[str, YouTubeVideo],
+    logger: logging.Logger,
+    output_dir: str | None = None,
+) -> str:
     """Fetch a YouTube playlist and merge new videos into the processing queue.
 
     Args:
@@ -134,6 +152,7 @@ def _process_playlist(service, playlist_url: str, videos: dict, logger) -> str:
         playlist_url: URL of the YouTube playlist to process.
         videos: Mapping of video URL → video object to update in place.
         logger: Logger instance for diagnostic messages.
+        output_dir: Optional root folder of the OKF bundle.
 
     Returns:
         The playlist title reported by YouTube.
@@ -151,22 +170,42 @@ def _process_playlist(service, playlist_url: str, videos: dict, logger) -> str:
         click.echo(f"     URL: {video.url}")
     click.echo("")
 
+    if output_dir:
+        for stored in service.get_videos_from_filesystem(playlist_title):
+            if stored.url not in videos:
+                videos[stored.url] = stored
+            elif not videos[stored.url].summary and stored.summary:
+                videos[stored.url].summary = stored.summary
+                videos[stored.url].main_points = stored.main_points
+
     added_count = 0
     skipped_count = 0
     for video in playlist_videos:
-        if video.url in videos:
+        existing = videos.get(video.url)
+        if (
+            existing
+            and existing.summary
+            and existing.summary != "_Not available yet._"
+            and existing.main_points
+        ):
             logger.info(
-                "Video '%s' already exists in Notion database, skipping",
+                "Video '%s' already summarized, skipping",
                 video.url,
             )
             skipped_count += 1
+            if not existing.title and video.title:
+                existing.title = video.title
+        elif existing:
+            if not existing.title and video.title:
+                existing.title = video.title
+            added_count += 1
         else:
             videos[video.url] = video
             added_count += 1
 
     click.echo(f"Added {added_count} new video(s) from playlist to processing queue.")
     if skipped_count > 0:
-        click.echo(f"Skipped {skipped_count} video(s) already in Notion database.")
+        click.echo(f"Skipped {skipped_count} video(s) already summarized.")
 
     return playlist_title
 
@@ -338,12 +377,17 @@ def cli(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too
 
         # Process the playlist if provided
         if playlist_url:
-            playlist_title = _process_playlist(service, playlist_url, videos, logger)
-
-        if output_dir:
+            playlist_title = _process_playlist(
+                service, playlist_url, videos, logger, output_dir=output_dir
+            )
+        elif output_dir:
             click.echo("Fetching videos already stored on the filesystem...")
             for stored in service.get_videos_from_filesystem(playlist_title):
-                videos.setdefault(stored.url, stored)
+                if stored.url not in videos:
+                    videos[stored.url] = stored
+                elif not videos[stored.url].summary and stored.summary:
+                    videos[stored.url].summary = stored.summary
+                    videos[stored.url].main_points = stored.main_points
 
         # Process videos with progress bar
         with (

@@ -103,6 +103,19 @@ class YouTubeVideo:
             f"Main Points: {self.main_points}"
         )
 
+    def __eq__(self, other: object) -> bool:
+        """Compare two YouTubeVideo instances for value equality."""
+        if not isinstance(other, YouTubeVideo):
+            return NotImplemented
+        return (
+            self.id == other.id
+            and self.url == other.url
+            and self.title == other.title
+            and self.transcript == other.transcript
+            and self.summary == other.summary
+            and self.main_points == other.main_points
+        )
+
     def compute_hash(self):
         """Compute a content hash for change detection.
 

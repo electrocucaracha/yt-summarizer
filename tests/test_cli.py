@@ -243,6 +243,65 @@ class TestCli(unittest.TestCase):
             playlist_url=None,
         )
 
+    @patch("yt_summarizer.logging.basicConfig")
+    @patch("yt_summarizer._read_token_from_file")
+    @patch("yt_summarizer.click.echo")
+    @patch("yt_summarizer.click.progressbar")
+    @patch("yt_summarizer.YouTubeSummarizerService")
+    def test_cli_skips_already_summarized_videos_from_filesystem(
+        self,
+        mock_service_cls,
+        mock_progressbar,
+        mock_echo,
+        _mock_read_token,
+        _mock_basic_config,
+    ):
+        """CLI should load existing filesystem videos and skip re-summarizing them."""
+        summarized_video = YouTubeVideo(
+            url="https://www.youtube.com/watch?v=video1",
+            title="Video 1",
+            summary="Existing summary",
+            main_points="| # | Main point |\n| -: | - |\n| 1 | point 1 |",
+        )
+        new_video = YouTubeVideo(
+            url="https://www.youtube.com/watch?v=video2",
+            title="Video 2",
+        )
+        mock_service = mock_service_cls.return_value
+        mock_service.get_videos_from_filesystem.return_value = [summarized_video]
+        mock_service.get_videos_from_playlist.return_value = {
+            "title": "Cloud Native Series",
+            "videos": [
+                YouTubeVideo(
+                    url="https://www.youtube.com/watch?v=video1", title="Video 1"
+                ),
+                new_video,
+            ],
+        }
+        mock_service.upsert_video.side_effect = lambda video, playlist_title=None: video
+        mock_service.generate_playlist_summary.return_value = "Playlist summary"
+        mock_progressbar.side_effect = lambda iterable, **kwargs: _FakeProgressBar(
+            list(iterable)
+        )
+
+        cli.callback(
+            notion_db_id=None,
+            notion_token_file="/tmp/mock-token",
+            output_dir="docs",
+            model="ollama/llama3.2",
+            api_base="http://localhost:11434",
+            log_level="INFO",
+            playlist_url="https://youtube.com/playlist?list=series1",
+            proxy_username=None,
+            proxy_password=None,
+        )
+
+        echo_messages = [call.args[0] for call in mock_echo.call_args_list if call.args]
+        self.assertIn("Skipped 1 video(s) already summarized.", echo_messages)
+        self.assertIn(
+            "Added 1 new video(s) from playlist to processing queue.", echo_messages
+        )
+
     def test_resolve_api_base_uses_provider_default_for_github_copilot(self):
         """GitHub Copilot models should not inherit the Ollama default base URL."""
         self.assertIsNone(_resolve_api_base("github_copilot/gpt-4", None))
