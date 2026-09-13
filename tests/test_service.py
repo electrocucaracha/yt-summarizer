@@ -164,8 +164,8 @@ class TestYouTubeSummarizerService(unittest.TestCase):
         self.assertEqual("Example summary", videos[0].summary)
         self.assertEqual("- point", videos[0].main_points)
 
-    def test_upsert_video_skips_processing_when_already_summarized(self):
-        """When a video is already summarized, LLM and transcript extraction are skipped."""
+    def _summarized_video(self, has_video: bool) -> YouTubeVideo:
+        """Build a video that already has a summary and configure filesystem presence."""
         video = YouTubeVideo(
             url="https://example.com/video1",
             title="Video 1",
@@ -173,9 +173,14 @@ class TestYouTubeSummarizerService(unittest.TestCase):
             main_points="| # | Main point |\n| -: | - |\n| 1 | point 1 |",
         )
         self.service.okf_client = MagicMock()
-        self.service.okf_client.has_video.return_value = True
+        self.service.okf_client.has_video.return_value = has_video
         self.service.youtube_client = MagicMock()
         self.service.llm_client = MagicMock()
+        return video
+
+    def test_upsert_video_skips_processing_when_already_summarized(self):
+        """When a video is already summarized, LLM and transcript extraction are skipped."""
+        video = self._summarized_video(has_video=True)
 
         result = self.service.upsert_video(video, playlist_title="K8s")
 
@@ -187,16 +192,7 @@ class TestYouTubeSummarizerService(unittest.TestCase):
 
     def test_upsert_video_writes_to_filesystem_if_missing(self):
         """When a video has a summary but is missing on the filesystem, it is written."""
-        video = YouTubeVideo(
-            url="https://example.com/video1",
-            title="Video 1",
-            summary="Existing summary",
-            main_points="| # | Main point |\n| -: | - |\n| 1 | point 1 |",
-        )
-        self.service.okf_client = MagicMock()
-        self.service.okf_client.has_video.return_value = False
-        self.service.youtube_client = MagicMock()
-        self.service.llm_client = MagicMock()
+        video = self._summarized_video(has_video=False)
 
         result = self.service.upsert_video(video, playlist_title="K8s")
 

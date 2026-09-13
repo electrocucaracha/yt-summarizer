@@ -38,6 +38,18 @@ from .okf import DEFAULT_ROOT as DEFAULT_OUTPUT_DIR
 from .service import YouTubeSummarizerService
 
 
+def _merge_stored_videos(
+    stored_videos: list[YouTubeVideo], videos: dict[str, YouTubeVideo]
+) -> None:
+    """Merge videos loaded from the filesystem into the in-memory video map."""
+    for stored in stored_videos:
+        if stored.url not in videos:
+            videos[stored.url] = stored
+        elif not videos[stored.url].summary and stored.summary:
+            videos[stored.url].summary = stored.summary
+            videos[stored.url].main_points = stored.main_points
+
+
 @contextlib.contextmanager
 def _temporary_logger_level(logger: logging.Logger, level: int):
     """Temporarily set a logger level while running a scoped operation."""
@@ -171,12 +183,9 @@ def _process_playlist(
     click.echo("")
 
     if output_dir:
-        for stored in service.get_videos_from_filesystem(playlist_title):
-            if stored.url not in videos:
-                videos[stored.url] = stored
-            elif not videos[stored.url].summary and stored.summary:
-                videos[stored.url].summary = stored.summary
-                videos[stored.url].main_points = stored.main_points
+        _merge_stored_videos(
+            service.get_videos_from_filesystem(playlist_title), videos
+        )
 
     added_count = 0
     skipped_count = 0
@@ -382,12 +391,9 @@ def cli(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too
             )
         elif output_dir:
             click.echo("Fetching videos already stored on the filesystem...")
-            for stored in service.get_videos_from_filesystem(playlist_title):
-                if stored.url not in videos:
-                    videos[stored.url] = stored
-                elif not videos[stored.url].summary and stored.summary:
-                    videos[stored.url].summary = stored.summary
-                    videos[stored.url].main_points = stored.main_points
+            _merge_stored_videos(
+                service.get_videos_from_filesystem(playlist_title), videos
+            )
 
         # Process videos with progress bar
         with (

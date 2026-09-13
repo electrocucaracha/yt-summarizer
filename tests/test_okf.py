@@ -37,7 +37,7 @@ class TestOKFClient(unittest.TestCase):
         )
 
     def test_write_video_creates_concept_under_playlist_folder(self):
-        """Each video should become a markdown concept inside the playlist folder with lowercase ID."""
+        """Each video becomes a markdown concept with a lowercase ID."""
         path = self.client.write_video(self.video, playlist_title="K8s Weekly")
 
         self.assertEqual(self.root / "k8s-weekly" / "video1abc.md", path)

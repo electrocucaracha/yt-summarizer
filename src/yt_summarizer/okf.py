@@ -39,6 +39,8 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
+import yaml
+
 from .model import YouTubeVideo
 
 logger = logging.getLogger(__name__)
@@ -95,83 +97,62 @@ def _render_frontmatter(fields: dict[str, Any]) -> str:
     """Render an ordered mapping as a YAML frontmatter block."""
     lines = ["---"]
     for key, value in fields.items():
-        if value is None:
-            continue
-        if isinstance(value, list):
-            lines.append(f"{key}:")
-            for item in value:
-                lines.append(f"  - {item}")
-        elif isinstance(value, dict):
-            lines.append(f"{key}:")
-            for k, v in value.items():
-                if isinstance(v, str) and (
-                    ": " in v
-                    or v.startswith(
-                        (
-                            "@",
-                            "%",
-                            "[",
-                            "{",
-                            "*",
-                            "&",
-                            "?",
-                            "|",
-                            ">",
-                            '"',
-                            "'",
-                            "#",
-                        )
-                    )
-                    or "\n" in v
-                ):
-                    lines.append(f"  {k}: {_escape_yaml(v)}")
-                else:
-                    lines.append(f"  {k}: {v}")
-        elif isinstance(value, str):
-            if key in {"type", "layout", "status"}:
-                lines.append(f"{key}: {value}")
-            elif key == "okf_version":
-                lines.append(f'{key}: "{value}"')
-            elif (
-                any(
-                    c in value
-                    for c in (
-                        ":",
-                        '"',
-                        "\\",
-                        "{",
-                        "}",
-                        "[",
-                        "]",
-                        ",",
-                        "&",
-                        "*",
-                        "#",
-                        "?",
-                        "|",
-                        "-",
-                        "<",
-                        ">",
-                        "=",
-                        "!",
-                        "%",
-                        "@",
-                        "`",
-                        "\n",
-                    )
-                )
-                or value.startswith(" ")
-                or value.endswith(" ")
-            ):
-                lines.append(f"{key}: {_escape_yaml(value)}")
-            else:
-                lines.append(f"{key}: {value}")
-        elif isinstance(value, bool):
-            lines.append(f"{key}: {'true' if value else 'false'}")
-        else:
-            lines.append(f"{key}: {value}")
+        if value is not None:
+            lines.extend(_render_frontmatter_field(key, value))
     lines.append("---")
     return "\n".join(lines)
+
+
+def _render_frontmatter_field(key: str, value: Any) -> list[str]:
+    """Render one frontmatter field."""
+    if isinstance(value, list):
+        return [f"{key}:", *(f"  - {item}" for item in value)]
+    if isinstance(value, dict):
+        return _render_frontmatter_mapping(key, value)
+    return [f"{key}: {_render_frontmatter_scalar(key, value)}"]
+
+
+def _render_frontmatter_mapping(key: str, value: dict[str, Any]) -> list[str]:
+    """Render a nested mapping field."""
+    lines = [f"{key}:"]
+    for nested_key, nested_value in value.items():
+        rendered_value = _render_mapping_scalar(nested_value)
+        lines.append(f"  {nested_key}: {rendered_value}")
+    return lines
+
+
+def _render_mapping_scalar(value: Any) -> str:
+    """Render a scalar nested in a frontmatter mapping."""
+    if isinstance(value, str) and (
+        ": " in value
+        or value.startswith(("@", "%", "[", "{", "*", "&", "?", "|", ">", '"', "'", "#"))
+        or "\n" in value
+    ):
+        return _escape_yaml(value)
+    return str(value)
+
+
+def _render_frontmatter_scalar(key: str, value: Any) -> str:
+    """Render a scalar value, quoting strings when YAML requires it."""
+    if isinstance(value, str):
+        if key in {"type", "layout", "status"}:
+            return value
+        if key == "okf_version":
+            return f'"{value}"'
+        return _escape_yaml(value) if _requires_yaml_quoting(value) else value
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    return str(value)
+
+
+def _requires_yaml_quoting(value: str) -> bool:
+    """Return whether a plain YAML scalar needs quoting."""
+    special_characters = ':"\\{}[],&*#?|->=!%@`\n'
+    return (
+        any(character in value for character in special_characters)
+        or value.startswith(" ")
+        or value.endswith(" ")
+    )
 
 
 def _format_summary(text: str) -> str:
@@ -184,7 +165,6 @@ def _format_summary(text: str) -> str:
         if sentence.strip()
     ]
     return "\n".join(sentences) if sentences else "_Not available yet._"
-
 
 def _format_main_points_table(text: str) -> str:
     """Format main points as a Markdown table complying with OKF v0.2."""
@@ -236,8 +216,6 @@ def _parse_frontmatter(content: str) -> dict[str, Any]:
         return {}
 
     try:
-        import yaml
-
         data = yaml.safe_load(block)
         if isinstance(data, dict):
             return data
@@ -451,36 +429,35 @@ class Client:
             if not self._video_path(title, video).is_file() or video.summary:
                 self.write_video(video, playlist_title=title, nav_order=idx)
 
-        entries = []
-        for video in videos:
-            vid_id = extract_video_id(video.url)
-            summary_desc = _first_sentence(video.summary)
-            entry_line = f"- [{video.title or video.url}]({vid_id}.md)"
-            if summary_desc:
-                entry_line += f" - {summary_desc}"
-            entries.append(entry_line)
-
-        playlist_nav_order = self._get_playlist_nav_order(slug)
-        playlist_frontmatter = _render_frontmatter(
-            {
-                "layout": "default",
-                "title": title,
-                "has_children": True,
-                "nav_order": playlist_nav_order,
-                "okf_version": OKF_VERSION,
-            }
-        )
+        playlist_frontmatter = self._playlist_frontmatter(title, slug, playlist_url)
 
         playlist_index_path = directory / "index.md"
         playlist_index_path.write_text(
             f"{playlist_frontmatter}\n\n"
-            f"# {title}\n\n## Concepts\n\n" + "\n".join(entries) + "\n",
+            f"# {title}\n\n## Concepts\n\n"
+            + "\n".join(_playlist_entries(videos))
+            + "\n",
             encoding="utf-8",
         )
 
         self._write_root_index()
         logger.info("Wrote OKF playlist bundle: %s", playlist_index_path)
         return playlist_index_path
+
+    def _playlist_frontmatter(
+        self, title: str, slug: str, playlist_url: str | None
+    ) -> str:
+        """Render frontmatter for a playlist index."""
+        fields: dict[str, Any] = {
+            "layout": "default",
+            "title": title,
+            "has_children": True,
+            "nav_order": self._get_playlist_nav_order(slug),
+            "okf_version": OKF_VERSION,
+        }
+        if playlist_url:
+            fields["resource"] = playlist_url
+        return _render_frontmatter(fields)
 
     def _write_executive_report(
         self, directory: Path, title: str, slug: str, summary: str
@@ -627,3 +604,15 @@ def _first_sentence(text: str, limit: int = 200) -> str:
     if len(sentence) > limit:
         sentence = sentence[: limit - 3] + "..."
     return sentence
+
+
+def _playlist_entries(videos: list[YouTubeVideo]) -> list[str]:
+    """Render the concept links for a playlist index."""
+    entries = []
+    for video in videos:
+        entry = f"- [{video.title or video.url}]({extract_video_id(video.url)}.md)"
+        summary = _first_sentence(video.summary)
+        if summary:
+            entry += f" - {summary}"
+        entries.append(entry)
+    return entries
