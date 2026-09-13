@@ -9,6 +9,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.1.0] - 2026-09-12
+
+### Added
+
+- Enabled OKF knowledge bundle output to conform to OKF v0.2, restructuring the bundle layout to include one index per playlist in a subfolder, and introducing standardized video concepts with OKF-compliant frontmatter. [25600576](https://github.com/electrocucaracha/yt-summarizer/commit/25600576f0f7f230a6aa3a058d8dea1a09adee00)
+
+## [5.0.1] - 2026-09-12
+
+### Changed
+
+- Simplified the YouTube video processing to update the video object in place, eliminating unnecessary object duplication and streamlining the logic for callers who already own the video record. [75f24096](https://github.com/electrocucaracha/yt-summarizer/commit/75f24096e5e76db31d41ad4d9432bd2a3a9c03bf)
+
+## [5.0.0] - 2026-09-12
+
+### Removed
+
+- Simplified maintenance for unnecessary interpreter versions by removing Python 3.10 from the tox environment list, allowing test environments to focus on Python 3.11 and 3.12. [94e873b1](https://github.com/electrocucaracha/yt-summarizer/commit/94e873b17f9f6b20ba098372e269a214e6050dd8)
+
+## [4.0.0] - 2026-09-12
+
+### Removed
+
+- Streamlined documentation by eliminating redundant Copilot integration guidelines and ensuring the pull request template links correctly to the main contribution guidelines. [5ee70dd5](https://github.com/electrocucaracha/yt-summarizer/commit/5ee70dd52eaf4a7ae46152063806895943792e47)
+
+## [3.1.1] - 2026-09-12
+
+### Changed
+
+- Enhanced the documentation layout to provide clear and authoritative guidance for users, including a visual pipeline diagram and expanded "Running the Application" guide covering various deployment scenarios and troubleshooting steps. [fc97869b](https://github.com/electrocucaracha/yt-summarizer/commit/fc97869b5a39d79dae195b65b9084dfe0abcd8af)
+
+## [3.1.0] - 2026-09-12
+
+### Added
+
+- Detailed changelog entries have been introduced for releases 3.0.0 through 3.0.14, providing a complete project history and improved release documentation for future maintainers. [b88dfa30](https://github.com/electrocucaracha/yt-summarizer/commit/b88dfa3067a25746b5e1e5a2fa44cecd6ba673b4)
+
 ## [3.0.14] - 2026-09-12
 
 ### Changed
