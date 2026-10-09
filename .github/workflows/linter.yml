@@ -55,10 +55,10 @@ jobs:
           VALIDATE_BIOME_FORMAT: false
           VALIDATE_BIOME_LINT: false
           DEFAULT_BRANCH: ${{ github.head_ref || github.ref_name }}
-      - uses: GrantBirki/git-diff-action@b27608d18e6dd9b31b46ede56a93e045d3881a28 # v3.0.0
+      - uses: GrantBirki/git-diff-action@b8988a3c1104ea0e8ebcd9a092e0224b7657c95d # v3.0.2
         id: git-diff
         if: failure()
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         if: failure()
       - name: Install Copilot CLI
         if: failure()
