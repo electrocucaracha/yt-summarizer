@@ -21,22 +21,67 @@ This module abstracts the complexity of LLM interactions for seamless integratio
 """
 
 import logging
+from typing import NoReturn
 
 import litellm
+
+from .token_budget import (
+    RESPONSE_TOKEN_RESERVE,
+    count_prompt_tokens,
+    get_prompt_token_limit,
+)
 
 logger = logging.getLogger(__name__)
 TRANSCRIPT_SUMMARY_CHAR_LIMIT = 2000
 MAIN_POINTS_CHAR_LIMIT = 2000
 EXECUTIVE_SUMMARY_CHAR_LIMIT = 6000
-# Locally hosted models expose small context windows, so long inputs are condensed
-# with a map-reduce summarization chain before the final prompt.
-CHAIN_MODEL_PREFIXES = ("ollama/", "ollama_chat/")
-CHUNK_CHAR_SIZE = 8000
+try:
+    from headroom.compress import compress as headroom_compress
+except ImportError:  # pragma: no cover - optional runtime fallback
+    headroom_compress = None
+
 MAX_CHAIN_PASSES = 5
 
 
 class LLMConnectionError(RuntimeError):
     """Raised when the configured LLM endpoint cannot be reached."""
+
+
+class LLMContextWindowError(RuntimeError):
+    """Raised when a prompt cannot be reduced to the model's safe input budget."""
+
+
+def _compress_messages(
+    model: str, messages: list[dict[str, str]], prompt_token_limit: int
+) -> list[dict[str, str]]:
+    """Compress prompt messages with Headroom, preserving the original on failure."""
+    if headroom_compress is None:
+        logger.debug("Headroom is not installed; sending the prompt uncompressed.")
+        return list(messages)
+
+    try:
+        result = headroom_compress(
+            messages=messages,
+            model=model,
+            model_limit=prompt_token_limit,
+            compress_user_messages=True,
+            protect_recent=0,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Headroom compression failed; using original prompt: %s", exc)
+        return list(messages)
+
+    if result.tokens_before <= 0:
+        logger.debug("Headroom reported no token counts; using original prompt.")
+        return list(messages)
+
+    logger.debug(
+        "Headroom compressed the prompt from %d to %d tokens using %s",
+        result.tokens_before,
+        result.tokens_after,
+        result.transforms_applied,
+    )
+    return list(result.messages)
 
 
 def _split_into_chunks(text: str, size: int) -> list[str]:
@@ -97,7 +142,6 @@ class Client:
         """
         logger.info("Generating summary using LLM")
         logger.debug("Summarizing %d characters of text", len(text))
-        text = self._condense(text)
         messages = [
             {
                 "role": "system",
@@ -122,11 +166,12 @@ class Client:
                     "characters, "
                     "including spaces. "
                     "The summary must be in the same language as the input text.\n\n"
-                    f"{text}"
                 ),
             },
         ]
-        summary = self._complete(messages=messages, action="generate summary")
+        summary = self._complete(
+            messages=messages, action="generate summary", text=text
+        )
         logger.debug("Successfully generated summary of %d characters", len(summary))
         return summary
 
@@ -144,7 +189,6 @@ class Client:
         """
         logger.info("Generating executive summary using LLM")
         logger.debug("Synthesizing executive summary from %d characters", len(text))
-        text = self._condense(text)
         playlist_context = (
             f"The playlist title is: {playlist_title}. Use it as context for the "
             "executive summary when relevant. "
@@ -177,11 +221,12 @@ class Client:
                     "two short paragraphs, no longer than "
                     f"{EXECUTIVE_SUMMARY_CHAR_LIMIT} characters, including spaces. "
                     f"{playlist_context}\n\n"
-                    f"{text}"
                 ),
             },
         ]
-        summary = self._complete(messages=messages, action="generate executive summary")
+        summary = self._complete(
+            messages=messages, action="generate executive summary", text=text
+        )
         logger.debug(
             "Successfully generated executive summary of %d characters", len(summary)
         )
@@ -201,7 +246,6 @@ class Client:
         """
         logger.info("Extracting main points using LLM")
         logger.debug("Extracting main points from %d characters of text", len(text))
-        text = self._condense(text)
         messages = [
             {
                 "role": "system",
@@ -225,63 +269,47 @@ class Client:
                     f"Ensure the response is no longer than {MAIN_POINTS_CHAR_LIMIT} "
                     "characters, "
                     "including spaces.\n\n"
-                    f"{text}"
                 ),
             },
         ]
-        main_points = self._complete(messages=messages, action="extract main points")
+        main_points = self._complete(
+            messages=messages, action="extract main points", text=text
+        )
         logger.debug(
             "Successfully extracted main points of %d characters",
             len(main_points),
         )
         return main_points
 
-    @property
-    def uses_summarization_chain(self) -> bool:
-        """Whether the configured model requires chunked summarization."""
-        return self.model.startswith(CHAIN_MODEL_PREFIXES)
+    def _condense(self, text: str, prompt_token_limit: int) -> str:
+        """Map context-sized excerpts to summaries and join them in source order."""
+        chunks: list[str] = []
+        pending = [text]
+        while pending:
+            chunk = pending.pop()
+            # The number of parts cannot exceed the number of characters.
+            messages = self._chunk_messages(chunk, len(text), len(text))
+            if count_prompt_tokens(self.model, messages) <= prompt_token_limit:
+                chunks.append(chunk)
+            elif len(chunk) > 1:
+                pending.extend(reversed(_split_into_chunks(chunk, len(chunk) // 2)))
+            else:
+                self._context_error("the chunk instructions exceed the input budget")
 
-    def _condense(self, text: str) -> str:
-        """Reduce long text with a map-reduce summarization chain.
-
-        Each pass splits the text into context-sized chunks, summarizes every chunk
-        independently (map), and joins the partial summaries (reduce). Passes repeat
-        until the text fits a single context window, the pass limit is reached, or
-        the text stops shrinking.
-
-        Args:
-            text: The text to condense.
-
-        Returns:
-            Text short enough to be sent to the model in a single request.
-        """
-        if not self.uses_summarization_chain:
-            return text
-
-        for _ in range(MAX_CHAIN_PASSES):
-            if len(text) <= CHUNK_CHAR_SIZE:
-                return text
-
-            chunks = _split_into_chunks(text, CHUNK_CHAR_SIZE)
-            logger.info(
-                "Running summarization chain pass over %d chunks (%d characters)",
-                len(chunks),
-                len(text),
+        logger.info("Running summarization chain over %d chunks", len(chunks))
+        return "\n\n".join(
+            self._complete(
+                self._chunk_messages(chunk, index, len(chunks)),
+                action=f"summarize part {index} of {len(chunks)}",
+                allow_condense=False,
             )
-            condensed = "\n\n".join(
-                self._summarize_chunk(chunk, index, len(chunks))
-                for index, chunk in enumerate(chunks, start=1)
-            )
-            if len(condensed) >= len(text):
-                logger.warning("Summarization chain stopped making progress")
-                return condensed
-            text = condensed
+            for index, chunk in enumerate(chunks, start=1)
+        )
 
-        return text
-
-    def _summarize_chunk(self, chunk: str, index: int, total: int) -> str:
-        """Summarize a single chunk as part of the summarization chain."""
-        messages = [
+    @staticmethod
+    def _chunk_messages(chunk: str, index: int, total: int) -> list[dict[str, str]]:
+        """Build the same prompt for chunk sizing and chunk completion."""
+        return [
             {
                 "role": "system",
                 "content": (
@@ -290,7 +318,8 @@ class Client:
                     "Preserve every relevant fact, name, number, and conclusion "
                     "stated in the excerpt, and do not add information that is not "
                     "explicitly present. "
-                    "Return only the summary, in the same language as the excerpt."
+                    "Return only a concise summary shorter than the excerpt, "
+                    "in the same language as the excerpt."
                 ),
             },
             {
@@ -303,18 +332,54 @@ class Client:
                 ),
             },
         ]
-        return self._complete(
-            messages=messages, action=f"summarize part {index} of {total}"
-        )
 
-    def _complete(self, messages: list[dict[str, str]], action: str) -> str:
-        """Run a LiteLLM completion request and normalize connectivity failures."""
+    def _context_error(self, reason: str) -> NoReturn:
+        """Report an unsafe prompt instead of sending it or truncating the source."""
+        message = (
+            f"Unable to fit the prompt within the context window for model "
+            f"'{self.model}': {reason}. Use a model with a larger context window."
+        )
+        logger.error(message)
+        raise LLMContextWindowError(message)
+
+    def _complete(
+        self,
+        messages: list[dict[str, str]],
+        action: str,
+        *,
+        text: str = "",
+        allow_condense: bool = True,
+    ) -> str:
+        """Compress, reduce if needed, and send only a context-sized prompt."""
+        prompt_token_limit = get_prompt_token_limit(self.model)
+        for chain_pass in range(MAX_CHAIN_PASSES + 1):
+            full_messages = [
+                *messages[:-1],
+                {**messages[-1], "content": messages[-1]["content"] + text},
+            ]
+            prepared = _compress_messages(self.model, full_messages, prompt_token_limit)
+            if count_prompt_tokens(self.model, prepared) <= prompt_token_limit:
+                break
+            if not allow_condense or not text:
+                self._context_error("the prompt instructions exceed the input budget")
+            if chain_pass == MAX_CHAIN_PASSES:
+                self._context_error("the summarization pass limit was reached")
+            if count_prompt_tokens(self.model, messages) >= prompt_token_limit:
+                self._context_error("the prompt instructions leave no room for content")
+            condensed = self._condense(text, prompt_token_limit)
+            if count_prompt_tokens(
+                self.model, [{"role": "user", "content": condensed}]
+            ) >= count_prompt_tokens(self.model, [{"role": "user", "content": text}]):
+                self._context_error("summarization stopped reducing the token count")
+            text = condensed
+
         try:
             completion_kwargs = {
                 "model": self.model,
-                "messages": messages,
+                "messages": prepared,
                 "temperature": 0.1,
                 "stream": False,
+                "max_tokens": RESPONSE_TOKEN_RESERVE,
             }
             if self.api_base:
                 completion_kwargs["api_base"] = self.api_base
@@ -337,4 +402,9 @@ class Client:
             logger.error("Failed to %s: %s", action, exc)
             raise
 
-        return response.choices[0].message.content
+        content = response.choices[0].message.content
+        if not isinstance(content, str) or not content.strip():
+            message = f"Unable to {action}: model '{self.model}' returned no text."
+            logger.error(message)
+            raise ValueError(message)
+        return content

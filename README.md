@@ -13,13 +13,14 @@
 [![Scc COCOMO Badge](https://sloc.xyz/github/electrocucaracha/yt-summarizer?category=cocomo)](https://github.com/boyter/scc/)
 
 `yt-summarizer` is a Python CLI
-that reads YouTube videos from a Notion database,
+that reads YouTube videos from a Notion database or playlist,
 retrieves transcripts,
 generates per-video summaries and main points with an LLM,
-and writes the results back to Notion.
-It also supports ingesting a full YouTube playlist into the processing queue
-and produces an executive summary
-that synthesizes the collection.
+and writes the results back to Notion and/or a local Open Knowledge Format (OKF)
+knowledge collection.
+Filesystem output includes a collection index, an executive overview, a linked
+video-note table, and one Markdown note per video with its summary, main points,
+and YouTube thumbnail.
 
 ![Diagram](docs/assets/concept.png)
 
@@ -36,10 +37,17 @@ that synthesizes the collection.
   and a list of main points for each video.
 - **Executive summaries**:
   Produces a synthesized playlist or collection-level executive summary
-  at the end of the run.
+  at the end of the run and includes it in the generated collection.
+- **Browsable OKF output**:
+  Generates a navigable Markdown knowledge collection compatible with the
+  structure used by [yt-conferences](https://github.com/electrocucaracha/yt-conferences).
 - **Flexible LLM backends**:
   Works with local Ollama models
   and other LiteLLM-compatible providers.
+- **Context-aware prompt compression**:
+  Uses Headroom with model-specific token budgets before LLM requests,
+  then reduces oversized transcripts with token-aware map-reduce summarization
+  for any provider, even when compression is unavailable or fails.
 - **Operational visibility**:
   Includes structured logging
   and clearer connection errors for unreachable LLM endpoints.
@@ -50,7 +58,7 @@ that synthesizes the collection.
 2. Optionally expand the queue with videos discovered from `--playlist-url`.
 3. Fetch each video's title and transcript from YouTube.
 4. Generate a summary and main points for each video with the configured LLM.
-5. Upsert the results into Notion.
+5. Upsert the results into configured storage backends.
 6. Print an executive summary across the processed collection.
 
 ## Notion Database Expectations

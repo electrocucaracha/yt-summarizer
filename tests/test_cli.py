@@ -2,18 +2,47 @@
 
 import logging
 import unittest
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import litellm
+import pytest
 from click.core import ParameterSource
+from click.testing import CliRunner
 
 from yt_summarizer import (
     LLMConnectionError,
+    LLMContextWindowError,
     _resolve_api_base,
     _suppress_litellm_output,
     cli,
 )
 from yt_summarizer.model import YouTubeVideo
+
+
+@pytest.mark.parametrize("stage", ["upsert_video", "generate_playlist_summary"])
+def test_cli_reports_context_window_failures(monkeypatch, tmp_path, stage):
+    """Both video and executive analysis failures surface without reporting success."""
+    service = MagicMock()
+    video = YouTubeVideo(url="https://www.youtube.com/watch?v=video1")
+    service.get_videos_from_filesystem.return_value = [video]
+    service.upsert_video.return_value = video
+    getattr(service, stage).side_effect = LLMContextWindowError(
+        "Use a model with a larger context window."
+    )
+    monkeypatch.setattr(
+        "yt_summarizer.YouTubeSummarizerService", lambda **_kwargs: service
+    )
+    monkeypatch.chdir(tmp_path)
+
+    result = CliRunner().invoke(
+        cli, ["--notion-db-id", "", "--output-dir", str(tmp_path)]
+    )
+
+    assert result.exit_code == 1
+    assert "LLM context window error:" in result.output
+    assert "larger context window" in result.output
+    assert "YouTube summarizer has completed." not in result.output
+    service.store_playlist.assert_not_called()
 
 
 class _FakeProgressBar:
@@ -50,9 +79,7 @@ class TestCli(unittest.TestCase):
         mock_service = mock_service_cls.return_value
         mock_service.get_videos_from_notion_db.return_value = [notion_video]
         mock_service.get_videos_from_playlist.return_value = []
-        mock_service.upsert_video.side_effect = lambda video, playlist_title=None: (
-            video
-        )
+        mock_service.upsert_video.side_effect = lambda video, playlist_title=None: video
 
         progressbar_calls = []
 
@@ -171,9 +198,7 @@ class TestCli(unittest.TestCase):
             "title": "Platform Engineering Weekly",
             "videos": [playlist_video],
         }
-        mock_service.upsert_video.side_effect = lambda video, playlist_title=None: (
-            video
-        )
+        mock_service.upsert_video.side_effect = lambda video, playlist_title=None: video
         mock_progressbar.side_effect = lambda iterable, **kwargs: _FakeProgressBar(
             list(iterable)
         )
@@ -213,9 +238,7 @@ class TestCli(unittest.TestCase):
         mock_service = mock_service_cls.return_value
         mock_service.get_videos_from_filesystem.return_value = [stored_video]
         mock_service.generate_playlist_summary.return_value = "executive summary"
-        mock_service.upsert_video.side_effect = lambda video, playlist_title=None: (
-            video
-        )
+        mock_service.upsert_video.side_effect = lambda video, playlist_title=None: video
         mock_progressbar.side_effect = lambda iterable, **kwargs: _FakeProgressBar(
             list(iterable)
         )

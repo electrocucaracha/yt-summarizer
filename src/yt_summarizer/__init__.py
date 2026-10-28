@@ -32,7 +32,7 @@ import click_spinner
 import litellm
 from click.core import ParameterSource
 
-from .llm import LLMConnectionError
+from .llm import LLMConnectionError, LLMContextWindowError
 from .model import YouTubeVideo
 from .okf import DEFAULT_ROOT as DEFAULT_OUTPUT_DIR
 from .service import YouTubeSummarizerService
@@ -405,7 +405,6 @@ def cli(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too
             for url, video in progress_iter:
                 logger.info("Processing and storing the video: %s", url)
                 videos[url] = service.upsert_video(video, playlist_title=playlist_title)
-        completed_successfully = True
         click.echo("Generating executive summary...")
         with _suppress_litellm_output(), click_spinner.spinner():
             playlist_summary = service.generate_playlist_summary(
@@ -419,9 +418,14 @@ def cli(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too
         )
         click.echo("\nExecutive Summary of the Playlist:")
         click.echo(playlist_summary)
+        completed_successfully = True
     except LLMConnectionError as exc:
         logger.error("LLM endpoint is unavailable: %s", str(exc))
         click.echo(f"LLM connection error: {exc}", err=True)
+        sys.exit(1)
+    except LLMContextWindowError as exc:
+        logger.error("LLM context window exhausted: %s", str(exc))
+        click.echo(f"LLM context window error: {exc}", err=True)
         sys.exit(1)
     except Exception as e:  # pylint: disable=broad-exception-caught
         logger.error("An unexpected error occurred: %s", str(e))

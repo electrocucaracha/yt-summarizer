@@ -2,6 +2,7 @@
 name = "yt-summarizer"
 version = "0.0.1"
 description = "YouTube summarizer videos"
+requires-python = ">=3.12"
 dependencies = [
     "click",
     "click-spinner",
@@ -9,6 +10,7 @@ dependencies = [
     "youtube-transcript-api",
     "beautifulsoup4",
     "litellm",
+    "headroom-ai",
     "yt-dlp",
     "googletrans",
 ]
@@ -18,6 +20,7 @@ test = [
     "pytest>=7.0",
     "pytest-mock>=3.10",
     "pytest-cov>=4.0",
+    "mutmut>=3.8,<4",
 ]
 
 [build-system]
@@ -30,10 +33,27 @@ yt_summarizer = "yt_summarizer:cli"
 [tool.hatch.build.targets.wheel]
 packages = ["src/yt_summarizer"]
 
+[tool.mutmut]
+source_paths = ["src/yt_summarizer"]
+only_mutate = [
+    "src/yt_summarizer/model.py",
+    "src/yt_summarizer/notion.py",
+    "src/yt_summarizer/service.py",
+    "src/yt_summarizer/youtube.py",
+]
+pytest_add_cli_args_test_selection = [
+    "tests/test_model.py",
+    "tests/test_notion.py",
+    "tests/test_service.py",
+    "tests/test_youtube.py",
+]
+mutate_only_covered_lines = true
+use_git_change_detection = false
+
 [tool.tox]
 legacy_tox_ini = """
 [tox]
-envlist = py312,py311
+envlist = py312
 skip_missing_interpreters = true
 isolated_build = true
 

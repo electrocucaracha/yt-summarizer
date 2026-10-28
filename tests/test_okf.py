@@ -56,7 +56,29 @@ class TestOKFClient(unittest.TestCase):
         self.assertIn("# Main Points", content)
         self.assertIn("|   # | Main point |", content)
         self.assertIn("# Video", content)
+        self.assertIn(
+            "[![Video thumbnail](https://img.youtube.com/vi/Video1ABC/hqdefault.jpg)]",
+            content,
+        )
         self.assertIn(f"[Watch on YouTube]({self.video.url})", content)
+
+    def test_write_video_thumbnail_supports_short_urls(self):
+        """Short YouTube URLs retain the case-sensitive video ID in thumbnails."""
+        video = YouTubeVideo(
+            url="https://youtu.be/Video1ABC",
+            title="Short URL",
+            summary="Summary",
+            main_points="- point",
+        )
+
+        content = self.client.write_video(video, "K8s Weekly").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn(
+            "[![Video thumbnail](https://img.youtube.com/vi/Video1ABC/hqdefault.jpg)]",
+            content,
+        )
 
     def test_get_videos_round_trips_written_concepts(self):
         """Videos written to the bundle should be readable back."""
@@ -108,8 +130,13 @@ class TestOKFClient(unittest.TestCase):
         self.assertIn("has_children: true", playlist_index)
         self.assertIn('okf_version: "0.2"', playlist_index)
         self.assertIn("# K8s Weekly", playlist_index)
-        self.assertIn("## Concepts", playlist_index)
-        self.assertIn("- [Intro to Kubernetes](video1abc.md)", playlist_index)
+        self.assertIn("## Executive Overview", playlist_index)
+        self.assertIn("## Talks", playlist_index)
+        self.assertIn("| Talk Title | Core Summary |", playlist_index)
+        self.assertIn(
+            "| [Intro to Kubernetes](video1abc.md) | A short intro. |",
+            playlist_index,
+        )
 
         # Executive report README.md
         readme_path = self.root / "k8s-weekly" / "README.md"

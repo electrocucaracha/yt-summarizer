@@ -179,29 +179,138 @@ class TestYouTubeSummarizerService(unittest.TestCase):
         return video
 
     def test_upsert_video_skips_processing_when_already_summarized(self):
-        """When a video is already summarized, LLM and transcript extraction are skipped."""
-        video = self._summarized_video(has_video=True)
+        """Summarized videos skip processing and are written only if missing."""
+        for has_video in (True, False):
+            with self.subTest(has_video=has_video):
+                video = self._summarized_video(has_video=has_video)
 
-        result = self.service.upsert_video(video, playlist_title="K8s")
+                result = self.service.upsert_video(video, playlist_title="K8s")
 
-        self.assertEqual(video.summary, result.summary)
-        self.service.youtube_client.get_video_transcript.assert_not_called()
+                self.assertEqual(video.summary, result.summary)
+                self.service.youtube_client.get_video_transcript.assert_not_called()
+                self.service.llm_client.summarize.assert_not_called()
+                self.service.llm_client.get_main_points.assert_not_called()
+                if has_video:
+                    self.service.okf_client.write_video.assert_not_called()
+                else:
+                    self.service.okf_client.write_video.assert_called_once_with(
+                        video, playlist_title="K8s"
+                    )
+
+    def test_process_video_enriches_a_copy_of_incomplete_video(self):
+        """Missing metadata and analysis should be fetched without mutating input."""
+        video = YouTubeVideo(url="https://example.com/video")
+        self.service.youtube_client = MagicMock()
+        self.service.youtube_client.get_video_title.return_value = "Video title"
+        self.service.youtube_client.get_video_transcript.return_value = "Transcript"
+        self.service.llm_client = MagicMock()
+        self.service.llm_client.summarize.return_value = "Summary"
+        self.service.llm_client.get_main_points.return_value = "- Point"
+
+        result = self.service._process_video(video)
+
+        self.assertIsNot(video, result)
+        self.assertEqual("Video title", result.title)
+        self.assertEqual("Summary", result.summary)
+        self.assertEqual("- Point", result.main_points)
+        self.assertEqual("", video.title)
+        self.assertEqual("", video.summary)
+        self.service.youtube_client.get_video_transcript.assert_called_once_with(
+            url=video.url
+        )
+
+    def test_process_video_only_generates_missing_analysis(self):
+        """Existing summary text should be preserved when only main points are missing."""
+        video = YouTubeVideo(
+            url="https://example.com/video",
+            title="Video title",
+            summary="Existing summary",
+        )
+        self.service.youtube_client = MagicMock()
+        self.service.youtube_client.get_video_transcript.return_value = "Transcript"
+        self.service.llm_client = MagicMock()
+        self.service.llm_client.get_main_points.return_value = "- Point"
+
+        result = self.service._process_video(video)
+
+        self.assertEqual("Existing summary", result.summary)
+        self.assertEqual("- Point", result.main_points)
+        self.service.youtube_client.get_video_title.assert_not_called()
+        self.service.llm_client.summarize.assert_not_called()
+        self.service.llm_client.get_main_points.assert_called_once_with("Transcript")
+
+    def test_process_video_keeps_unavailable_transcript_without_llm_calls(self):
+        """A missing transcript should leave summary and points unchanged."""
+        video = YouTubeVideo(
+            url="https://example.com/video",
+            title="Video title",
+        )
+        self.service.youtube_client = MagicMock()
+        self.service.youtube_client.get_video_transcript.return_value = ""
+        self.service.llm_client = MagicMock()
+
+        result = self.service._process_video(video)
+
+        self.assertEqual("", result.summary)
+        self.assertEqual("", result.main_points)
         self.service.llm_client.summarize.assert_not_called()
         self.service.llm_client.get_main_points.assert_not_called()
-        self.service.okf_client.write_video.assert_not_called()
 
-    def test_upsert_video_writes_to_filesystem_if_missing(self):
-        """When a video has a summary but is missing on the filesystem, it is written."""
-        video = self._summarized_video(has_video=False)
+    def test_fetch_with_retries_retries_expected_errors(self):
+        """Transient fetch errors should retry and return the first successful result."""
+        fetch = MagicMock(side_effect=[OSError("temporary"), "transcript"])
 
-        result = self.service.upsert_video(video, playlist_title="K8s")
+        result = self.service._fetch_with_retries(fetch, "video", retries=3)
 
-        self.assertEqual(video.summary, result.summary)
-        self.service.youtube_client.get_video_transcript.assert_not_called()
-        self.service.llm_client.summarize.assert_not_called()
-        self.service.okf_client.write_video.assert_called_once_with(
-            video, playlist_title="K8s"
+        self.assertEqual("transcript", result)
+        self.assertEqual(2, fetch.call_count)
+        fetch.assert_called_with("video")
+
+    def test_fetch_with_retries_returns_none_after_final_failure(self):
+        """Exhausted retries should return None rather than raise."""
+        fetch = MagicMock(side_effect=ValueError("invalid"))
+
+        result = self.service._fetch_with_retries(fetch, retries=2)
+
+        self.assertIsNone(result)
+        self.assertEqual(2, fetch.call_count)
+
+    @patch("yt_summarizer.service.yt_dlp.YoutubeDL")
+    def test_get_videos_from_playlist_maps_flat_entries(self, mock_youtube_dl):
+        """Playlist entries should become video models with watch URLs."""
+        downloader = mock_youtube_dl.return_value.__enter__.return_value
+        downloader.extract_info.return_value = {
+            "title": "Playlist",
+            "entries": [{"id": "abc123", "title": "Video title"}],
+        }
+
+        result = self.service.get_videos_from_playlist("https://example.com/playlist")
+
+        self.assertEqual("Playlist", result["title"])
+        self.assertEqual(
+            YouTubeVideo(
+                url="https://www.youtube.com/watch?v=abc123", title="Video title"
+            ),
+            result["videos"][0],
         )
+        downloader.extract_info.assert_called_once_with(
+            "https://example.com/playlist", download=False
+        )
+
+    def test_normalize_notion_text_handles_alternate_payloads(self):
+        """Notion text normalization should handle content, scalar, and null values."""
+        self.assertEqual(
+            "firstsecond",
+            self.service._normalize_notion_text(
+                [
+                    {"text": {"content": "first"}},
+                    {"plain_text": "second"},
+                    "ignored",
+                ]
+            ),
+        )
+        self.assertEqual("42", self.service._normalize_notion_text(42))
+        self.assertEqual("", self.service._normalize_notion_text(None))
 
 
 if __name__ == "__main__":

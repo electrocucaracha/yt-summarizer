@@ -7,7 +7,7 @@ This document provides guidelines and instructions for developers.
 
 ### Prerequisites
 
-- Python 3.10 or higher
+- Python 3.12 or higher
 
 ### Installation
 
@@ -18,7 +18,7 @@ uv sync
 source .venv/bin/activate
 ```
 
-2. Verify installation:
+1. Verify installation:
 
 ```bash { name=contributing.verify }
 yt_summarizer --help
@@ -59,6 +59,15 @@ Execute all tests:
 ```bash { name=contributing.test }
 make test
 ```
+
+Check whether the focused unit tests detect behavioral changes in the model,
+Notion, service, and YouTube modules:
+
+```bash
+uv run --python 3.12 --extra test mutmut run
+```
+
+Review surviving mutants with `uv run --python 3.12 --extra test mutmut browse`.
 
 ### Test Requirements
 

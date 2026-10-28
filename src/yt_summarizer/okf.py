@@ -382,7 +382,8 @@ class Client:
         body = (
             f"# Summary\n\n{_format_summary(video.summary)}\n\n"
             f"# Main Points\n\n{_format_main_points_table(video.main_points)}\n\n"
-            f"# Video\n\n[Watch on YouTube]({video.url})\n"
+            f"# Video\n\n{_video_thumbnail(video.url)}"
+            f"[Watch on YouTube]({video.url})\n"
         )
         path.write_text(f"{frontmatter}\n\n{body}", encoding="utf-8")
         logger.debug("Wrote video concept: %s", path)
@@ -435,9 +436,18 @@ class Client:
         playlist_frontmatter = self._playlist_frontmatter(title, slug, playlist_url)
 
         playlist_index_path = directory / "index.md"
+        overview = (
+            f"## Executive Overview\n\n{_format_summary(playlist_summary)}\n\n"
+            if playlist_summary.strip()
+            else ""
+        )
         playlist_index_path.write_text(
             f"{playlist_frontmatter}\n\n"
-            f"# {title}\n\n## Concepts\n\n"
+            f"# {title}\n\n"
+            f"{overview}"
+            "## Talks\n\n"
+            "| Talk Title | Core Summary |\n"
+            "| ---------- | ------------ |\n"
             + "\n".join(_playlist_entries(videos))
             + "\n",
             encoding="utf-8",
@@ -609,13 +619,29 @@ def _first_sentence(text: str, limit: int = 200) -> str:
     return sentence
 
 
+def _video_thumbnail(url: str) -> str:
+    """Render a linked YouTube thumbnail, preserving the case-sensitive video ID."""
+    parsed = urlparse(url)
+    host = (parsed.hostname or "").lower()
+    video_id = ""
+    if host in {"youtube.com", "www.youtube.com", "m.youtube.com"}:
+        video_id = parse_qs(parsed.query).get("v", [""])[0]
+        if not video_id and parsed.path.startswith(("/embed/", "/shorts/")):
+            video_id = parsed.path.rsplit("/", 1)[-1]
+    elif host in {"youtu.be", "www.youtu.be"}:
+        video_id = parsed.path.strip("/").split("/", 1)[0]
+
+    if not video_id:
+        return ""
+    thumbnail = f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg"
+    return f"[![Video thumbnail]({thumbnail})]({url})\n\n"
+
+
 def _playlist_entries(videos: list[YouTubeVideo]) -> list[str]:
-    """Render the concept links for a playlist index."""
+    """Render a table of talk links and summaries for a playlist index."""
     entries = []
     for video in videos:
-        entry = f"- [{video.title or video.url}]({extract_video_id(video.url)}.md)"
-        summary = _first_sentence(video.summary)
-        if summary:
-            entry += f" - {summary}"
-        entries.append(entry)
+        title = (video.title or video.url).replace("|", "\\|")
+        summary = _first_sentence(video.summary).replace("|", "\\|")
+        entries.append(f"| [{title}]({extract_video_id(video.url)}.md) | {summary} |")
     return entries
