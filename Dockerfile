@@ -6,7 +6,9 @@ WORKDIR /app
 
 COPY . /app/
 
-RUN apk add --no-cache gcc=15.2.0-r5 musl-dev=1.2.6-r3
+# hadolint ignore=DL3018
+# build-base provides gcc, g++, make, and musl development headers.
+RUN apk add --no-cache build-base
 
 RUN uv sync --no-editable && \
     uvx pex -o /tmp/yt-summarizer -c yt_summarizer --include-tools .
@@ -17,9 +19,8 @@ COPY --from=builder /tmp/yt-summarizer /app/yt-summarizer
 
 RUN addgroup -g 1000 appuser && \
     adduser -D -u 1000 -G appuser appuser && \
-    chown -R appuser:appuser /app && \
     mkdir -p /etc/notion && \
-    chown appuser:appuser /etc/notion
+    chown -R appuser:appuser /app /etc/notion
 
 WORKDIR /app
 
