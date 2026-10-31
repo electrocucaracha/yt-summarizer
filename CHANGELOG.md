@@ -9,6 +9,96 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.2.2] - 2026-10-30
+
+### Changed
+
+- Normalized the base image and dependencies to ensure consistent package versions across builds and improved reproducibility. [10393dc2](https://github.com/electrocucaracha/yt-summarizer/commit/10393dc212f073351b7b877d86b05a49d0079f95)
+
+## [6.2.1] - 2026-10-30
+
+### Changed
+
+- Enabled consistent code quality and reliability across CI and developer tooling by enforcing standards and workflow safety through improved linter and formatter integration, workflow validation, and streamlined dependency installation. [387a9f97](https://github.com/electrocucaracha/yt-summarizer/commit/387a9f97579540dadd40ec3a25b56e17b1a86d76)
+
+## [6.2.0] - 2026-10-27
+
+### Added
+
+- Enabled token-aware summarization, dynamically fitting prompt inputs within model context limits, while introducing explicit context window error handling and optional prompt compression. [d6df7a41](https://github.com/electrocucaracha/yt-summarizer/commit/d6df7a411c1c9f2ea58c27b07da8803711e38f62)
+
+## [6.1.7] - 2026-10-13
+
+### Changed
+
+- Simplified the maintenance of GitHub Actions by updating to their latest versions and delegating version updates to the 'gh-updater' tool, reducing custom maintenance and ensuring compatibility with updated workflows. [41cffbbf](https://github.com/electrocucaracha/yt-summarizer/commit/41cffbbf20dd56d457e20fc6c1de52c2fe57f2fa)
+
+## [6.1.6] - 2026-09-18
+
+### Changed
+
+- Simplified the version update job by reusing a shared workflow for maintainability and consistency, and updated the renovatebot/GitHub Action to v46.3.1 to include the latest upstream fixes and security updates. [c3347092](https://github.com/electrocucaracha/yt-summarizer/commit/c3347092019cf7150e9e9fc90c8a6c595b5183bc)
+
+## [6.1.5] - 2026-09-18
+
+### Changed
+
+- Upgraded the ai-prepare-commit-msg pre-commit hook to v17.0.1 to ensure access to the latest features and fixes, with no breaking behavior or migration requirements. [e7191ef8](https://github.com/electrocucaracha/yt-summarizer/commit/e7191ef855317460c31b7413292c0d5dc875ee24)
+
+## [6.1.4] - 2026-09-13
+
+### Changed
+
+- Shortened long lines and added empty lines for readability, adhering to style guidelines without introducing any breaking changes. [59262220](https://github.com/electrocucaracha/yt-summarizer/commit/59262220d2d760a0f4ab0131ec271c221af7e2dc)
+
+## [6.1.3] - 2026-09-13
+
+### Changed
+
+- Simplified test fixture creation and clarified field handling in the OKF client, enabling easier extension and testing of the codebase. [a988d4a7](https://github.com/electrocucaracha/yt-summarizer/commit/a988d4a7fe7e60fd6bb85a32f965f099ad1422b4)
+
+## [6.1.2] - 2026-09-13
+
+### Fixed
+
+- Videos already summarized on the filesystem are now skipped during playlist processing and CLI execution, preventing unnecessary API calls and improving efficiency. [879f7f9c](https://github.com/electrocucaracha/yt-summarizer/commit/879f7f9c9e2a082e2a7a4aed5fd43df0a437c586)
+
+## [6.1.1] - 2026-09-13
+
+### Fixed
+
+- Resolved video enrichment to prevent unintended side effects by only returning enriched copies and ensuring original input integrity, while also correctly writing summarized videos missing from the filesystem. [da1a703a](https://github.com/electrocucaracha/yt-summarizer/commit/da1a703ab39080f2e59bf1a738c58c3f953771bf)
+
+## [6.1.0] - 2026-09-13
+
+### Added
+
+- Enabled richer downstream integration and higher-quality documentation for knowledge bundles by introducing executive report generation for playlists with summaries and complete frontmatter in playlist, video, and index Markdown. [dded734f](https://github.com/electrocucaracha/yt-summarizer/commit/dded734ffa8c53d70867155c26bf79d22dd798bd)
+
+## [6.0.0] - 2026-09-13
+
+### Removed
+
+- Simplified the documentation index and guides list to accurately reflect available content by removing unavailable sections for tutorials and reference and updating the how-to guides list to exclude missing content. [959ddf0a](https://github.com/electrocucaracha/yt-summarizer/commit/959ddf0ac524540a47c42e238f171b880649e7be)
+
+## [5.3.0] - 2026-09-12
+
+### Added
+
+- Enabled comprehensive project history and improved release transparency for maintainers by adding detailed changelog entries for releases 3.1.0 through 5.1.0. [e9a5d317](https://github.com/electrocucaracha/yt-summarizer/commit/e9a5d317384c88fc4ad657c35f866588de3533f4)
+
+## [5.2.0] - 2026-09-12
+
+### Added
+
+- Inserted a empty line before the "North America 2025" event header in the Cloud Native & Kubernetes AI Day section for improved readability and consistent Markdown formatting. [b9fce1f3](https://github.com/electrocucaracha/yt-summarizer/commit/b9fce1f39d4a501f7a3848023b706c7cedec43a4)
+
+## [5.1.1] - 2026-09-12
+
+### Changed
+
+- Simplified code formatting to improve readability by breaking up long list comprehensions, string literals, and conditional expressions into multiple lines, resulting in no observable change to functionality. [83f91c5c](https://github.com/electrocucaracha/yt-summarizer/commit/83f91c5ce74964379ed26f4b54e509df3810a99d)
+
 ## [5.1.0] - 2026-09-12
 
 ### Added
