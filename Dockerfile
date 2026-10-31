@@ -1,4 +1,4 @@
-FROM python:3.12-alpine AS builder
+FROM python:3.12-alpine3.24 AS builder
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
@@ -6,12 +6,12 @@ WORKDIR /app
 
 COPY . /app/
 
-RUN apk add --no-cache gcc musl-dev
+RUN apk add --no-cache gcc=15.2.0-r5 musl-dev=1.2.6-r3
 
 RUN uv sync --no-editable && \
     uvx pex -o /tmp/yt-summarizer -c yt_summarizer --include-tools .
 
-FROM python:3.12-alpine
+FROM python:3.12-alpine3.24
 
 COPY --from=builder /tmp/yt-summarizer /app/yt-summarizer
 
@@ -23,7 +23,7 @@ RUN addgroup -g 1000 appuser && \
 
 WORKDIR /app
 
-USER appuser
+USER 1000:1000
 
 ENV NOTION_DATABASE_ID=''
 ENV LLM_MODEL='ollama/llama3.2'
