@@ -7,7 +7,6 @@ WORKDIR /app
 COPY . /app/
 
 # hadolint ignore=DL3018
-# build-base provides gcc, g++, make, and musl development headers.
 RUN apk add --no-cache build-base
 
 RUN uv sync --no-editable && \
