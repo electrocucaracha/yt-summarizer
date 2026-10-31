@@ -1,7 +1,10 @@
 """Tests for the Notion client module."""
 
+# Unit tests deliberately exercise private property conversion helpers.
+# pylint: disable=protected-access
+
 import unittest
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import MagicMock
 
 from yt_summarizer.notion import Client
@@ -132,7 +135,7 @@ class TestNotionClient(unittest.TestCase):
 
     def test_extract_property_item_values(self):
         """Notion property types should be normalized to readable strings."""
-        date = datetime(2024, 1, 2, 3, 4, 5)
+        date = datetime(2024, 1, 2, 3, 4, 5, tzinfo=timezone.utc)
         cases = [
             ({"type": "checkbox", "checkbox": True}, "True"),
             (
@@ -141,7 +144,7 @@ class TestNotionClient(unittest.TestCase):
             ),
             (
                 {"type": "created_time", "created_time": "2024-01-02T03:04:05"},
-                date.isoformat(),
+                "2024-01-02T03:04:05",
             ),
             ({"type": "date", "date": {"start": date}}, date.isoformat()),
             ({"type": "email", "email": "ada@example.com"}, "ada@example.com"),

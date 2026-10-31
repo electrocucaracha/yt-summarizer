@@ -7,11 +7,11 @@ This project is organized using the Diátaxis framework.
 
 Practical guides for specific tasks.
 
-- [Running the Application](how-to/running-application.md)
+- [Running the Application](how-to-guides/running-application.md)
 
 ## Explanation
 
 Background concepts and discussions.
 
-- [Workflow](explanation/workflow.md)
-- [Playlist Summary Samples](explanation/summary-samples.md)
+- [Workflow](explanations/workflow.md)
+- [Playlist Summary Samples](explanations/summary-samples.md)

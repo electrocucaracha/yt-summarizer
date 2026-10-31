@@ -31,7 +31,8 @@ def count_prompt_tokens(model: str, messages: list[dict[str, str]]) -> int:
         count = litellm.token_counter(model=model, messages=messages)
         if isinstance(count, int) and not isinstance(count, bool) and count > 0:
             return count
-    except Exception as exc:  # noqa: BLE001
+    # Provider tokenizer failures must retain the conservative budget guard.
+    except Exception as exc:  # noqa: BLE001 # pylint: disable=broad-exception-caught
         logger.warning("Unable to count prompt tokens for model '%s': %s", model, exc)
 
     logger.warning("Using UTF-8 byte-based prompt token estimate for model '%s'", model)
@@ -54,7 +55,8 @@ def get_prompt_token_limit(model: str) -> int:
             and reported_limit > 0
         ):
             max_input_tokens = reported_limit
-    except Exception as exc:  # noqa: BLE001
+    # Unknown provider metadata must retain the conservative context fallback.
+    except Exception as exc:  # noqa: BLE001 # pylint: disable=broad-exception-caught
         logger.debug("Unable to resolve context window for model '%s': %s", model, exc)
 
     return max(1, max_input_tokens - RESPONSE_TOKEN_RESERVE)

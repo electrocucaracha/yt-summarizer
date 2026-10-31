@@ -67,7 +67,8 @@ def _compress_messages(
             compress_user_messages=True,
             protect_recent=0,
         )
-    except Exception as exc:  # noqa: BLE001
+    # Optional compression must not block requests when third-party code fails.
+    except Exception as exc:  # noqa: BLE001 # pylint: disable=broad-exception-caught
         logger.warning("Headroom compression failed; using original prompt: %s", exc)
         return list(messages)
 
@@ -353,11 +354,14 @@ class Client:
         """Compress, reduce if needed, and send only a context-sized prompt."""
         prompt_token_limit = get_prompt_token_limit(self.model)
         for chain_pass in range(MAX_CHAIN_PASSES + 1):
-            full_messages = [
-                *messages[:-1],
-                {**messages[-1], "content": messages[-1]["content"] + text},
-            ]
-            prepared = _compress_messages(self.model, full_messages, prompt_token_limit)
+            prepared = _compress_messages(
+                self.model,
+                [
+                    *messages[:-1],
+                    {**messages[-1], "content": messages[-1]["content"] + text},
+                ],
+                prompt_token_limit,
+            )
             if count_prompt_tokens(self.model, prepared) <= prompt_token_limit:
                 break
             if not allow_condense or not text:

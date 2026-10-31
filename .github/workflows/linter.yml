@@ -58,11 +58,6 @@ jobs:
       - uses: GrantBirki/git-diff-action@b8988a3c1104ea0e8ebcd9a092e0224b7657c95d # v3.0.2
         id: git-diff
         if: failure()
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        if: failure()
-      - name: Install Copilot CLI
-        if: failure()
-        run: npm install --global @github/copilot
       - name: Get failed linter logs
         id: get-failed-linters
         if: failure()

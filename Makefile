@@ -18,7 +18,7 @@ help:
 	@echo "Available targets:"
 	@echo "  test  - Run tests using tox"
 	@echo "  lint  - Run linters using super-linter and tox"
-	@echo "  fmt   - Format code using shfmt, yamlfmt, prettier, and tox lint; validate YAML with yamllint"
+	@echo "  fmt   - Format code using shfmt, yamlfmt, prettier, and tox lint; validate YAML and workflows"
 	@echo "  clean - Remove build artifacts and caches"
 	@echo "  help  - Show this help message"
 
@@ -41,6 +41,7 @@ lint: clean
 	ghcr.io/super-linter/super-linter
 	command -v uvx > /dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
 	uvx tox -e lint-check
+	uv run --extra test --with pylint pylint src/ tests/
 	@echo "Lint complete!"
 
 .PHONY: fmt
@@ -56,6 +57,8 @@ fmt:
 	command -v uvx > /dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
 	uvx yamllint -c .github/linters/.yaml-lint.yml .github/ deploy/ ci/
 	uvx tox -e lint
+	uv run --extra test --with pylint pylint src/ tests/
+	uvx zizmor --offline .github/workflows/
 	@echo "Format complete!"
 
 .PHONY: clean

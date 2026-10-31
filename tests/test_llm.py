@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 import litellm
 import pytest
 
+from yt_summarizer import llm
 from yt_summarizer.llm import (
     EXECUTIVE_SUMMARY_CHAR_LIMIT,
     MAIN_POINTS_CHAR_LIMIT,
@@ -273,12 +274,11 @@ class TestDirectCompletionBehavior(unittest.TestCase):
         )
 
 
-@pytest.fixture
-def budgeted_completion(monkeypatch):
+@pytest.fixture(name="budgeted_completion")
+def fixture_budgeted_completion(monkeypatch):
     """Provide deterministic token counts and reject every oversized API call."""
-    from yt_summarizer import llm
 
-    def token_count(*, model, messages):
+    def token_count(*, messages, **_kwargs):
         return sum(len(message["content"].encode("utf-8")) + 16 for message in messages)
 
     monkeypatch.setattr(llm, "headroom_compress", None)
@@ -370,8 +370,6 @@ def test_chunks_handle_multibyte_and_unbroken_text(budgeted_completion, text):
 
 def test_compression_can_avoid_the_chain(budgeted_completion, monkeypatch):
     """A prompt that fits after compression needs no map-reduce requests."""
-    from yt_summarizer import llm
-
     monkeypatch.setattr(
         llm,
         "headroom_compress",
@@ -393,7 +391,6 @@ def test_insufficient_compression_uses_chain(
     budgeted_completion, monkeypatch, compression_fails
 ):
     """Compression failures and misleading metrics cannot bypass the token guard."""
-    from yt_summarizer import llm
 
     def compress(**kwargs):
         if compression_fails:
@@ -414,8 +411,6 @@ def test_insufficient_compression_uses_chain(
 
 def test_pass_limit_fails_without_final_request(budgeted_completion, monkeypatch):
     """Progress that still exceeds the budget at the pass limit is not sent."""
-    from yt_summarizer import llm
-
     monkeypatch.setattr(llm, "MAX_CHAIN_PASSES", 1)
     monkeypatch.setattr(
         Client, "_condense", lambda _self, text, _limit: text[: len(text) // 2]
@@ -438,7 +433,6 @@ def test_oversized_instructions_fail_before_api_call(budgeted_completion):
 
 def test_unknown_tokenizer_still_reduces_input(budgeted_completion, monkeypatch):
     """Tokenizer errors use conservative sizing for both map and final requests."""
-    from yt_summarizer import llm
 
     def fail(**_kwargs):
         raise ValueError("unsupported tokenizer")
@@ -455,8 +449,6 @@ def test_empty_chunk_responses_fail_explicitly(
     budgeted_completion, monkeypatch, content
 ):
     """A missing chunk summary cannot silently discard part of the source."""
-    from yt_summarizer import llm
-
     monkeypatch.setattr(
         llm.litellm,
         "completion",
@@ -467,6 +459,8 @@ def test_empty_chunk_responses_fail_explicitly(
 
     with pytest.raises(ValueError, match="returned no text"):
         Client(model="custom/model", api_base=None).summarize("word " * 2000)
+
+    assert not budgeted_completion
 
 
 if __name__ == "__main__":

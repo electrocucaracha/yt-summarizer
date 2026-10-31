@@ -48,6 +48,13 @@ Run formatting fixer:
 make fmt
 ```
 
+After formatting, `make fmt` runs zizmor offline against the GitHub Actions
+workflows. Fix any reported findings before committing; formatters do not fix
+workflow audit findings.
+
+Both `make fmt` and `make lint` also run Pylint against `src/` and `tests/`
+using the project's runtime and test dependencies.
+
 ## Testing
 
 All contributions must include tests that cover the new functionality.

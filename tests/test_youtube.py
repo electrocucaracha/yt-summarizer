@@ -72,6 +72,7 @@ class TestYouTubeClient(unittest.TestCase):
 
     @patch("yt_summarizer.youtube.requests.get")
     def test_get_video_title_uses_direct_request_without_proxy(self, mock_get):
+        """Clients without proxy credentials request the video page directly."""
         response = mock_get.return_value
         response.text = '<meta property="og:title" content="Direct video">'
         client = Client()

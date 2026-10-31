@@ -1,5 +1,8 @@
 """Tests for the YouTubeSummarizerService module."""
 
+# Unit tests deliberately exercise private processing and normalization helpers.
+# pylint: disable=protected-access
+
 import unittest
 from unittest.mock import MagicMock, patch
 

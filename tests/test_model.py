@@ -26,6 +26,7 @@ class TestYouTubeVideo(unittest.TestCase):
         self.assertEqual(video.main_points, ["Point 1", "Point 2"])
 
     def test_video_initialization_defaults(self):
+        """Omitted video fields retain their default values."""
         video = YouTubeVideo(url="https://youtube.com/video")
 
         self.assertIsNone(video.id)
@@ -35,6 +36,7 @@ class TestYouTubeVideo(unittest.TestCase):
         self.assertEqual("", video.main_points)
 
     def test_string_representation_includes_all_fields(self):
+        """String representations include content and field lengths."""
         video = YouTubeVideo(
             url="https://youtube.com/video",
             title="Title",
@@ -58,6 +60,7 @@ class TestYouTubeVideo(unittest.TestCase):
         )
 
     def test_equality_and_hash_use_persisted_content(self):
+        """Equality uses every field while hashing uses persisted content."""
         original = YouTubeVideo(
             id="one",
             url="https://youtube.com/video",
