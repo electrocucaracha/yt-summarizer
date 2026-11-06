@@ -283,6 +283,7 @@ def _resolve_api_base(
 )
 @click.option(
     "--log-level",
+    envvar="LOG_LEVEL",
     default="INFO",
     show_default=True,
     type=click.Choice(
@@ -292,6 +293,7 @@ def _resolve_api_base(
 )
 @click.option(
     "--playlist-url",
+    envvar="PLAYLIST_URL",
     required=False,
     help="YouTube playlist URL to add to this run.",
 )
