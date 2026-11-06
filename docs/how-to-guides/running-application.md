@@ -35,7 +35,27 @@ out locally and pass its directory as `--output-dir`.
 ## Run with Notion
 
 The application reads a Notion token from `/etc/notion/secrets.txt` by default.
-You can either:
+For local testing, put configuration in a `.env` file in the directory where
+you run `yt_summarizer`:
+
+```dotenv
+NOTION_TOKEN=your-notion-token-here
+NOTION_DATABASE_ID=your-database-id
+LLM_MODEL=ollama/llama3.2
+LLM_API_BASE=http://localhost:11434
+```
+
+Then run the CLI with no credential or model flags:
+
+```bash
+yt_summarizer
+```
+
+The CLI loads `.env` automatically. Variables already exported in the shell
+take precedence over `.env`, and command-line options take precedence over both.
+The repository ignores `.env` files; do not commit credentials.
+
+Alternatively, you can:
 
 1. **Create the token file** (recommended for production):
 

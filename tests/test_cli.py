@@ -1,7 +1,11 @@
 """Tests for the CLI module."""
 
 import logging
+import os
+import subprocess
+import sys
 import unittest
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import litellm
@@ -17,6 +21,39 @@ from yt_summarizer import (
     cli,
 )
 from yt_summarizer.model import YouTubeVideo
+
+
+def test_dotenv_loads_before_cli_configuration_and_preserves_environment(tmp_path):
+    """CLI imports load cwd .env without overriding existing environment values."""
+    (tmp_path / ".env").write_text(
+        "LLM_MODEL=dotenv/model\nLLM_API_BASE=http://dotenv.example\n",
+        encoding="utf-8",
+    )
+    env = os.environ.copy()
+    env.pop("LLM_API_BASE", None)
+    env["LLM_MODEL"] = "environment/model"
+    env["PYTHONPATH"] = str(Path(__file__).resolve().parents[1] / "src")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "from yt_summarizer import cli; "
+            "context = cli.make_context('yt_summarizer', []); "
+            "print(context.params['model']); print(context.params['api_base']); "
+            "context.close()",
+        ],
+        capture_output=True,
+        check=True,
+        cwd=tmp_path,
+        env=env,
+        text=True,
+    )
+
+    assert result.stdout.splitlines() == [
+        "environment/model",
+        "http://dotenv.example",
+    ]
 
 
 @pytest.mark.parametrize("stage", ["upsert_video", "generate_playlist_summary"])

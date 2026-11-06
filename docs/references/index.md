@@ -29,6 +29,9 @@ summaries.
 When `OUTPUT_DIR` is set, the CLI ignores `NOTION_DATABASE_ID` from the
 environment and does not require Notion credentials. Pass `--notion-db-id`
 explicitly to enable Notion and filesystem storage together.
+The CLI loads `.env` from the current working directory before reading
+environment-variable options. Existing shell variables take precedence over
+`.env`, and explicit command-line options take precedence over both.
 
 ## Notion contract
 

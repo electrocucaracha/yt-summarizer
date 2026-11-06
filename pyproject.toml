@@ -13,6 +13,7 @@ dependencies = [
     "headroom-ai",
     "yt-dlp",
     "googletrans",
+    "python-dotenv",
 ]
 
 [project.optional-dependencies]

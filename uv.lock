@@ -2566,6 +2566,7 @@ dependencies = [
     { name = "headroom-ai" },
     { name = "litellm" },
     { name = "notion-client" },
+    { name = "python-dotenv" },
     { name = "youtube-transcript-api" },
     { name = "yt-dlp" },
 ]
@@ -2588,6 +2589,7 @@ requires-dist = [
     { name = "litellm" },
     { name = "mutmut", marker = "extra == 'test'", specifier = ">=3.8,<4" },
     { name = "notion-client" },
+    { name = "python-dotenv" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=7.0" },
     { name = "pytest-cov", marker = "extra == 'test'", specifier = ">=4.0" },
     { name = "pytest-mock", marker = "extra == 'test'", specifier = ">=3.10" },

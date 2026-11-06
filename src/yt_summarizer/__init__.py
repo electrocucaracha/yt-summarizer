@@ -26,16 +26,20 @@ import logging
 import os
 import sys
 from logging.handlers import RotatingFileHandler
+from pathlib import Path
 
 import click
 import click_spinner
 import litellm
 from click.core import ParameterSource
+from dotenv import load_dotenv
 
 from .llm import LLMConnectionError, LLMContextWindowError
 from .model import YouTubeVideo
 from .okf import DEFAULT_ROOT as DEFAULT_OUTPUT_DIR
 from .service import YouTubeSummarizerService
+
+load_dotenv(Path.cwd() / ".env")
 
 
 def _merge_stored_videos(
@@ -235,43 +239,74 @@ def _resolve_api_base(
 
 
 @click.command()
-@click.option("--notion-db-id", envvar="NOTION_DATABASE_ID")
+@click.option(
+    "--notion-db-id",
+    envvar="NOTION_DATABASE_ID",
+    show_envvar=True,
+    help="Notion database to read and update. Omit to use the local OKF collection.",
+)
 @click.option(
     "--notion-token-file",
     default="/etc/notion/secrets.txt",
     envvar="NOTION_TOKEN_FILE",
-    help="Path to file containing Notion API token",
+    show_default=True,
+    show_envvar=True,
+    help="File containing the Notion API token. NOTION_TOKEN takes precedence.",
 )
 @click.option(
     "--output-dir",
     default=None,
     envvar="OUTPUT_DIR",
+    show_envvar=True,
     help=(
-        "Root folder of the OKF bundle (https://okf.md/spec/) where summaries are "
-        "stored. Defaults to 'docs' when no Notion database is configured."
+        "Root of the local OKF collection used to read and write summaries. "
+        "Defaults to 'docs' when no Notion database is configured."
     ),
 )
-@click.option("--model", default="ollama/llama3.2", envvar="LLM_MODEL")
-@click.option("--api-base", default=None, envvar="LLM_API_BASE")
+@click.option(
+    "--model",
+    default="ollama/llama3.2",
+    envvar="LLM_MODEL",
+    show_default=True,
+    show_envvar=True,
+    help="LiteLLM model identifier to use for summaries.",
+)
+@click.option(
+    "--api-base",
+    default=None,
+    envvar="LLM_API_BASE",
+    show_envvar=True,
+    help=(
+        "LLM API base URL. Defaults to localhost:11434, or the provider default "
+        "for GitHub Copilot models."
+    ),
+)
 @click.option(
     "--log-level",
     default="INFO",
+    show_default=True,
     type=click.Choice(
         ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], case_sensitive=False
     ),
     help="Set the logging level.",
 )
-@click.option("--playlist-url", required=False, help="YouTube playlist URL to process")
+@click.option(
+    "--playlist-url",
+    required=False,
+    help="YouTube playlist URL to add to this run.",
+)
 @click.option(
     "--proxy-username",
     required=False,
     envvar="PROXY_USERNAME",
+    show_envvar=True,
     help="Username for proxy authentication",
 )
 @click.option(
     "--proxy-password",
     required=False,
     envvar="PROXY_PASSWORD",
+    show_envvar=True,
     help="Password for proxy authentication",
 )
 def cli(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-branches
@@ -285,31 +320,10 @@ def cli(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too
     proxy_username: str,
     proxy_password: str,
 ):
-    """Main CLI entry point for the YouTube summarizer.
+    """Summarize YouTube videos from Notion or a local OKF collection.
 
-    Retrieves videos from a Notion database and/or a local OKF bundle, extracts
-    transcripts and metadata, generates summaries and key points using an LLM,
-    and writes the results back to every configured storage backend.
-
-    Args:
-        notion_db_id: Optional Notion database ID containing videos to process.
-            Can be provided as --notion-db-id flag or NOTION_DATABASE_ID env var.
-            When omitted, results are stored on the filesystem only.
-        notion_token_file: Path to file containing Notion API token
-            (default: /etc/notion/secrets.txt). Can be set via NOTION_TOKEN_FILE
-            environment variable, or use NOTION_TOKEN env var to override.
-        output_dir: Root folder of the OKF bundle to write. Defaults to "docs"
-            when no Notion database is configured.
-        model: The LLM model identifier (default: ollama/llama3.2).
-            Can be set via LLM_MODEL environment variable.
-        api_base: Optional LLM API base URL. Defaults to the provider endpoint
-            for GitHub Copilot models and to http://localhost:11434 otherwise.
-        log_level: The logging level (default: INFO).
-            Can be DEBUG, INFO, WARNING, ERROR, or CRITICAL.
-
-    Raises:
-        FileNotFoundError: If the token file does not exist and NOTION_TOKEN is not set.
-        ValueError: If the token file is empty and NOTION_TOKEN is not set.
+    Fetch transcripts, generate per-video and collection summaries, and save
+    results to the configured storage.
     """
     # pylint: disable=too-many-locals,too-many-statements
     # Configure logging
