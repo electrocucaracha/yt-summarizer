@@ -275,7 +275,7 @@ def _resolve_api_base(
     help="Password for proxy authentication",
 )
 def cli(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-branches
-    notion_db_id: str,
+    notion_db_id: str | None,
     notion_token_file: str,
     output_dir: str | None,
     model: str,
@@ -324,6 +324,11 @@ def cli(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too
 
     logger = logging.getLogger(__name__)
     context = click.get_current_context(silent=True)
+    notion_db_id_source = (
+        context.get_parameter_source("notion_db_id") if context is not None else None
+    )
+    if output_dir and notion_db_id_source == ParameterSource.ENVIRONMENT:
+        notion_db_id = None
     effective_api_base = _resolve_api_base(
         model,
         api_base,

@@ -27,6 +27,11 @@ yt_summarizer \
   --model "ollama/llama3.2"
 ```
 
+`--output-dir` selects filesystem mode even if `NOTION_DATABASE_ID` is set in
+the environment. To use a GitHub collection such as
+[`yt-conferences`](https://github.com/electrocucaracha/yt-conferences), check it
+out locally and pass its directory as `--output-dir`.
+
 ## Run with Notion
 
 The application reads a Notion token from `/etc/notion/secrets.txt` by default.
@@ -75,7 +80,9 @@ yt_summarizer \
 - `--api-base`: LLM API base URL (default: `http://localhost:11434`, or set `LLM_API_BASE`)
 - `--playlist-url`: Optional YouTube playlist URL to add to the queue
 - `--output-dir`: OKF bundle root. Defaults to `docs` in filesystem mode, or is
-  disabled when omitted with Notion mode.
+  disabled when omitted with Notion mode. When set, an environment-provided
+  `NOTION_DATABASE_ID` is ignored; pass `--notion-db-id` explicitly to enable
+  both storage backends.
 - `--proxy-username`: Optional Webshare proxy username, or set `PROXY_USERNAME`
 - `--proxy-password`: Optional Webshare proxy password, or set `PROXY_PASSWORD`
 - `--log-level`: Logging verbosity - DEBUG, INFO, WARNING, ERROR, or CRITICAL (default: INFO)
@@ -89,7 +96,7 @@ When the configured LLM endpoint cannot be reached, the CLI now exits with a spe
 | ------------------ | ------------------------ | -------------------------------------------------- |
 | NOTION_TOKEN       |                          | Notion API token - overrides token file (optional) |
 | NOTION_TOKEN_FILE  | /etc/notion/secrets.txt  | Path to file containing Notion API token           |
-| NOTION_DATABASE_ID |                          | Notion database ID containing videos (required)    |
+| NOTION_DATABASE_ID |                          | Optional Notion database ID                        |
 | LLM_MODEL          | ollama/llama3.2          | LLM model identifier for analysis                  |
 | LLM_API_BASE       | `http://localhost:11434` | Base URL for the LLM API endpoint                  |
 | OUTPUT_DIR         |                          | OKF bundle root                                    |

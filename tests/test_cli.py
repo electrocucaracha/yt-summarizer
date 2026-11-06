@@ -268,6 +268,36 @@ class TestCli(unittest.TestCase):
 
     @patch("yt_summarizer.logging.basicConfig")
     @patch("yt_summarizer._read_token_from_file")
+    @patch("yt_summarizer.click.progressbar")
+    @patch("yt_summarizer.YouTubeSummarizerService")
+    def test_cli_output_dir_ignores_notion_database_environment_variable(
+        self,
+        mock_service_cls,
+        mock_progressbar,
+        mock_read_token,
+        _mock_basic_config,
+    ):
+        """An explicit filesystem output should not require ambient Notion config."""
+        mock_service = mock_service_cls.return_value
+        mock_service.generate_playlist_summary.return_value = "executive summary"
+        mock_progressbar.side_effect = lambda iterable, **kwargs: _FakeProgressBar(
+            list(iterable)
+        )
+
+        result = CliRunner().invoke(
+            cli,
+            ["--output-dir", "docs"],
+            env={"NOTION_DATABASE_ID": "ambient-database-id"},
+        )
+
+        self.assertEqual(0, result.exit_code, result.output)
+        mock_read_token.assert_not_called()
+        self.assertIsNone(mock_service_cls.call_args.kwargs["notion_db_id"])
+        self.assertIsNone(mock_service_cls.call_args.kwargs["token"])
+        self.assertEqual("docs", mock_service_cls.call_args.kwargs["output_dir"])
+
+    @patch("yt_summarizer.logging.basicConfig")
+    @patch("yt_summarizer._read_token_from_file")
     @patch("yt_summarizer.click.echo")
     @patch("yt_summarizer.click.progressbar")
     @patch("yt_summarizer.YouTubeSummarizerService")

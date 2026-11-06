@@ -26,7 +26,9 @@ summaries.
 | `--log-level`         | `INFO`                                   | none                 | `DEBUG`, `INFO`, `WARNING`, `ERROR`, or `CRITICAL` |
 
 `NOTION_TOKEN` is not a Click option. When set, it overrides the token file.
-The CLI does not require Notion configuration when filesystem mode is active.
+When `OUTPUT_DIR` is set, the CLI ignores `NOTION_DATABASE_ID` from the
+environment and does not require Notion credentials. Pass `--notion-db-id`
+explicitly to enable Notion and filesystem storage together.
 
 ## Notion contract
 
