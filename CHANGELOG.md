@@ -9,6 +9,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [7.2.1] - 2026-11-06
+
+### Changed
+
+- Optimized the formatting of a multiline Python command in a subprocess call for improved readability and consistency with style guidelines without altering the test's logical behavior. [27c5028e](https://github.com/electrocucaracha/yt-summarizer/commit/27c5028ee83cbb8b0bc7ec3ed4574882969b282e)
+
+## [7.2.0] - 2026-11-06
+
+### Added
+
+- Enabled configuration in environments where CLI arguments are inconvenient, such as containerized or automated deployments, by allowing log-level and playlist-url flags to be set via environment variables. [7ca8c0a7](https://github.com/electrocucaracha/yt-summarizer/commit/7ca8c0a768e3da46fbfd8ac1bedc0272c930acf5)
+
+## [7.1.0] - 2026-11-06
+
+### Added
+
+- Enabled support for loading default configuration from .env files in the current working directory, with shell environment variables and explicit CLI options taking precedence in that order. [70604911](https://github.com/electrocucaracha/yt-summarizer/commit/70604911ce7b7c94f105983411005b8c5b3c837a)
+
+## [7.0.2] - 2026-11-06
+
+### Changed
+
+- Tests now consistently use the standard UTC object from Python 3.11+ instead of timezone.utc, aligning with datetime best practices and eliminating redundant import statements. [ad13b5dd](https://github.com/electrocucaracha/yt-summarizer/commit/ad13b5dd46fb25e3498c065546b19050bc98c16b)
+
+## [7.0.1] - 2026-11-06
+
+### Fixed
+
+- Clarified handling of NOTION_DATABASE_ID and OUTPUT_DIR environment variables to prevent configuration conflicts and make storage backend selection explicit. [048d464d](https://github.com/electrocucaracha/yt-summarizer/commit/048d464d9e6e76df4fa87f4651cc48f812d8483d)
+
+## [7.0.0] - 2026-10-30
+
+### Removed
+
+- Simplified the Dockerfile by removing a redundant comment about build-base components, improving clarity without introducing breaking behavior or requiring migration steps. [993f2750](https://github.com/electrocucaracha/yt-summarizer/commit/993f27506a38bc05e56454d1fcf5bd0a74fc0833)
+
+## [6.3.1] - 2026-10-30
+
+### Changed
+
+- Simplified package management and improved consistency by replacing explicit installation of gcc and musl-dev with the build-base package. [e9756da2](https://github.com/electrocucaracha/yt-summarizer/commit/e9756da28466e37950c6b396cfc43e7f1398fe92)
+
+## [6.3.0] - 2026-10-30
+
+### Added
+
+- Enabled consistent package versions across builds through normalized base image and dependencies, and improved code quality and reliability through enhanced linter and formatter integration, while also introducing token-aware summarization to dynamically fit prompt inputs within model context limits, and updating GitHub Actions to their latest versions for simplified maintenance. [7beed6d1](https://github.com/electrocucaracha/yt-summarizer/commit/7beed6d123df28ff8066dd739a5c824acbbc51f1)
+
 ## [6.2.2] - 2026-10-30
 
 ### Changed
