@@ -38,10 +38,12 @@ def test_dotenv_loads_before_cli_configuration_and_preserves_environment(tmp_pat
         [
             sys.executable,
             "-c",
-            "from yt_summarizer import cli; "
-            "context = cli.make_context('yt_summarizer', []); "
-            "print(context.params['model']); print(context.params['api_base']); "
-            "context.close()",
+            (
+                "from yt_summarizer import cli; "
+                "context = cli.make_context('yt_summarizer', []); "
+                "print(context.params['model']); print(context.params['api_base']); "
+                "context.close()"
+            ),
         ],
         capture_output=True,
         check=True,
