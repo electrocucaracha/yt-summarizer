@@ -4,7 +4,7 @@
 # pylint: disable=protected-access
 
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
 from yt_summarizer.notion import Client
@@ -135,7 +135,7 @@ class TestNotionClient(unittest.TestCase):
 
     def test_extract_property_item_values(self):
         """Notion property types should be normalized to readable strings."""
-        date = datetime(2024, 1, 2, 3, 4, 5, tzinfo=timezone.utc)
+        date = datetime(2024, 1, 2, 3, 4, 5, tzinfo=UTC)
         cases = [
             ({"type": "checkbox", "checkbox": True}, "True"),
             (
