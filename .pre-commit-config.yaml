@@ -44,7 +44,7 @@ repos:
         language: system
         pass_filenames: false
   - repo: https://github.com/electrocucaracha/ai-prepare-commit-msg
-    rev: v20.6.1
+    rev: v20.14.1
     hooks:
       - id: ai-prepare-commit
         stages:
