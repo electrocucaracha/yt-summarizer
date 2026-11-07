@@ -129,12 +129,11 @@ class Client:
                 time.monotonic() - fetch_started,
             )
             return ""
-        except Exception as e:
+        except Exception:
             logger.exception(
-                "Error fetching transcript for video ID %s after %.2f seconds: %s",
+                "Error fetching transcript for video ID %s after %.2f seconds",
                 video_id,
                 time.monotonic() - fetch_started,
-                e,
             )
             raise
 
