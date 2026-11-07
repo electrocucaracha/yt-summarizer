@@ -270,7 +270,8 @@ class TestDirectCompletionBehavior(unittest.TestCase):
 
         self.assertEqual(mock_completion.call_count, 1)
         self.assertIn(
-            long_text, mock_completion.call_args.kwargs["messages"][1]["content"]
+            long_text.strip(),
+            mock_completion.call_args.kwargs["messages"][1]["content"],
         )
 
 
@@ -465,5 +466,87 @@ def test_empty_chunk_responses_fail_explicitly(
     assert not budgeted_completion
 
 
+def test_completion_drops_unsupported_params_and_sets_timeout(monkeypatch):
+    """Reasoning models reject temperature, so unsupported params are dropped."""
+    seen = {}
+
+    def complete(**kwargs):
+        seen.update(kwargs)
+        return SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content="ok"))]
+        )
+
+    monkeypatch.setattr(llm, "headroom_compress", None)
+    monkeypatch.setattr(llm, "get_prompt_token_limit", lambda *_a: 100000)
+    monkeypatch.setattr(llm.litellm, "completion", complete)
+
+    Client(model="github_copilot/gpt-5-mini", api_base=None).summarize("short")
+
+    assert seen["drop_params"] is True
+    assert seen["timeout"] > 0
+    assert "English" in seen["messages"][0]["content"] + seen["messages"][1]["content"]
+
+
+def test_language_option_changes_prompt_language(monkeypatch):
+    """The requested summary language is named in the prompt."""
+    seen = {}
+
+    def complete(**kwargs):
+        seen.update(kwargs)
+        return SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content="ok"))]
+        )
+
+    monkeypatch.setattr(llm, "headroom_compress", None)
+    monkeypatch.setattr(llm, "get_prompt_token_limit", lambda *_a: 100000)
+    monkeypatch.setattr(llm.litellm, "completion", complete)
+
+    Client(model="custom/m", api_base=None, language="es").summarize("short")
+
+    text = seen["messages"][0]["content"] + seen["messages"][1]["content"]
+    assert "Spanish" in text
+
+
+def test_ollama_requests_use_chat_model_without_thinking(monkeypatch):
+    """Ollama calls use ollama_chat, disable thinking and set num_ctx."""
+    seen = {}
+
+    def complete(**kwargs):
+        seen.update(kwargs)
+        return SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content="ok"))]
+        )
+
+    monkeypatch.setattr(llm, "headroom_compress", None)
+    monkeypatch.setattr(llm, "get_prompt_token_limit", lambda *_a: 100000)
+    monkeypatch.setattr(llm, "get_context_window", lambda *_a: 32768)
+    monkeypatch.setattr(llm.litellm, "completion", complete)
+
+    Client(model="ollama/qwen3", api_base="http://h:11434").summarize("short")
+
+    assert seen["model"] == "ollama_chat/qwen3"
+    assert seen["reasoning_effort"] == "none"
+    assert seen["num_ctx"] == 32768
+
+
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_clean_transcript_removes_cues_and_whitespace():
+    """Sound cues and blank runs are stripped without touching speech."""
+    assert llm.clean_transcript("[Music]  hello\n\n>> that that (Applause) ♪ ok") == (
+        "hello that that ok"
+    )
+
+
+def test_summary_and_main_points_share_one_condense_pass(budgeted_completion):
+    """A long transcript is condensed once and reused by the second task."""
+    client = Client(model="custom/model", api_base=None)
+    text = "word " * 2000
+
+    client.summarize(text)
+    first = len(budgeted_completion)
+    client.get_main_points(text)
+
+    assert len(budgeted_completion) == first + 1

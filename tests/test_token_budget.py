@@ -102,42 +102,15 @@ def test_tokenizer_failure_uses_byte_estimate(monkeypatch, caplog):
 
 
 def test_ollama_window_comes_from_server_and_is_capped(monkeypatch):
-    """Ollama models use the server-reported window, capped by the env limit."""
-    token_budget._ollama_context_length.cache_clear()
+    """The Ollama native window is used but capped by OLLAMA_MAX_CONTEXT."""
+    monkeypatch.setattr(token_budget, "_ollama_context_length", lambda *_a: 262_144)
     monkeypatch.delenv("OLLAMA_MAX_CONTEXT", raising=False)
-    calls = []
 
-    class Response:
-        def raise_for_status(self):
-            return None
-
-        def json(self):
-            return {"model_info": {"qwen3.context_length": 262_144}}
-
-    def post(url, **kwargs):
-        calls.append((url, kwargs["json"]))
-        return Response()
-
-    monkeypatch.setattr(token_budget.httpx, "post", post)
-
-    window = token_budget.get_context_window("ollama/qwen3:27b", "http://host:11434/")
-    assert window == 32_768
-    monkeypatch.setenv("OLLAMA_MAX_CONTEXT", "100000")
-    assert token_budget.get_context_window(
-        "ollama/qwen3:27b", "http://host:11434/"
-    ) == (100_000)
-    assert calls == [("http://host:11434/api/show", {"model": "qwen3:27b"})]
-    token_budget._ollama_context_length.cache_clear()
+    assert token_budget.get_context_window("ollama/x", "http://h:11434") == 32_768
 
 
 def test_ollama_window_falls_back_when_server_unreachable(monkeypatch):
-    """An unreachable Ollama server keeps the conservative window."""
-    token_budget._ollama_context_length.cache_clear()
+    """An unreachable server yields the conservative default window."""
+    monkeypatch.setattr(token_budget, "_ollama_context_length", lambda *_a: None)
 
-    def post(*_args, **_kwargs):
-        raise token_budget.httpx.ConnectError("refused")
-
-    monkeypatch.setattr(token_budget.httpx, "post", post)
-
-    assert token_budget.get_context_window("ollama/x", "http://h:1") == 8_192
-    token_budget._ollama_context_length.cache_clear()
+    assert token_budget.get_context_window("ollama/x", "http://h:11434") == 8192

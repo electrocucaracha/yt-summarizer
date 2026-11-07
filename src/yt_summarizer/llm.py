@@ -21,6 +21,8 @@ This module abstracts the complexity of LLM interactions for seamless integratio
 """
 
 import logging
+import os
+import re
 import threading
 import time
 from typing import NoReturn
@@ -35,6 +37,16 @@ from .token_budget import (
 )
 
 logger = logging.getLogger(__name__)
+DEFAULT_LANGUAGE = "en"
+DEFAULT_LLM_TIMEOUT = 1800
+LANGUAGE_NAMES = {
+    "en": "English",
+    "es": "Spanish",
+    "fr": "French",
+    "de": "German",
+    "pt": "Portuguese",
+    "it": "Italian",
+}
 _IN_FLIGHT = 0
 _IN_FLIGHT_LOCK = threading.Lock()
 TRANSCRIPT_SUMMARY_CHAR_LIMIT = 2000
@@ -81,13 +93,29 @@ def _compress_messages(
         logger.debug("Headroom reported no token counts; using original prompt.")
         return list(messages)
 
-    logger.debug(
+    logger.info(
         "Headroom compressed the prompt from %d to %d tokens using %s",
         result.tokens_before,
         result.tokens_after,
         result.transforms_applied,
     )
     return list(result.messages)
+
+
+_CUE_PATTERN = re.compile(
+    r"[\[(](?:music|applause|laughter|laughs|silence|noise|inaudible|"
+    r"\u266a[^\])]*)[\])]|\u266a+|>>+",
+    re.IGNORECASE,
+)
+
+
+def clean_transcript(text: str) -> str:
+    """Drop caption sound cues and extra whitespace.
+
+    Captions contain noise that costs tokens without adding meaning; removing
+    it is deterministic and loses no spoken content.
+    """
+    return " ".join(_CUE_PATTERN.sub(" ", text).split())
 
 
 def _split_into_chunks(text: str, size: int) -> list[str]:
@@ -114,6 +142,14 @@ def _split_into_chunks(text: str, size: int) -> list[str]:
     return chunks
 
 
+def _llm_timeout() -> float:
+    """Return the per-request LLM timeout in seconds (``LLM_TIMEOUT`` override)."""
+    try:
+        return max(1.0, float(os.environ["LLM_TIMEOUT"]))
+    except (KeyError, ValueError):
+        return DEFAULT_LLM_TIMEOUT
+
+
 class Client:
     """Client for interacting with Language Models.
 
@@ -121,15 +157,23 @@ class Client:
     transcripts, including summarization and key point extraction.
     """
 
-    def __init__(self, model: str, api_base: str | None) -> None:
+    def __init__(
+        self, model: str, api_base: str | None, language: str = DEFAULT_LANGUAGE
+    ) -> None:
         """Initialize LLM client with model and API configuration.
 
         Args:
             model: The model identifier (e.g., 'ollama/llama3.2', 'gpt-4').
             api_base: Optional base URL for the LLM API.
+            language: Language code (e.g. ``en``, ``es``) for generated text.
         """
         self.model = model
         self.api_base = api_base
+        self.language = language
+        self.language_name = LANGUAGE_NAMES.get(language.lower(), language)
+        # Summary and main points share one condensed transcript per video.
+        self._condensed: dict[tuple[str, int], str] = {}
+        self._condensed_lock = threading.Lock()
         logger.debug(
             "Initialized LLM client with model: %s, api_base: %s", model, api_base
         )
@@ -158,7 +202,8 @@ class Client:
                     "Return only one well-written paragraph. "
                     f"The final output must not exceed {TRANSCRIPT_SUMMARY_CHAR_LIMIT} "
                     "characters, "
-                    "including spaces. The summary must be in the same language as the input text."
+                    f"including spaces. The summary must be written in {self.language_name}, "
+                    "translating from the transcript language if necessary."
                 ),
             },
             {
@@ -171,7 +216,8 @@ class Client:
                     f"Ensure the response is no longer than {TRANSCRIPT_SUMMARY_CHAR_LIMIT} "
                     "characters, "
                     "including spaces. "
-                    "The summary must be in the same language as the input text.\n\n"
+                    f"The summary must be written in {self.language_name}, "
+                    "translating from the transcript language if necessary.\n\n"
                 ),
             },
         ]
@@ -214,7 +260,7 @@ class Client:
                     "or preamble. "
                     f"The final output must not exceed {EXECUTIVE_SUMMARY_CHAR_LIMIT} "
                     "characters, "
-                    "including spaces."
+                    f"including spaces. Write it in {self.language_name}."
                 ),
             },
             {
@@ -261,7 +307,7 @@ class Client:
                     "Return only clear bullet points based strictly on the transcript. "
                     f"The final output must not exceed {MAIN_POINTS_CHAR_LIMIT} "
                     "characters, "
-                    "including spaces."
+                    f"including spaces. Write the bullet points in {self.language_name}."
                 ),
             },
             {
@@ -286,6 +332,17 @@ class Client:
             len(main_points),
         )
         return main_points
+
+    def _condense_cached(self, text: str, prompt_token_limit: int) -> str:
+        """Condense once per text so each extra task reuses the chain's output."""
+        key = (text, prompt_token_limit)
+        with self._condensed_lock:
+            if key in self._condensed:
+                logger.info("Reusing condensed text (%d characters)", len(text))
+                return self._condensed[key]
+            condensed = self._condense(text, prompt_token_limit)
+            self._condensed[key] = condensed
+            return condensed
 
     def _condense(self, text: str, prompt_token_limit: int) -> str:
         """Map context-sized excerpts to summaries and join them in source order."""
@@ -358,6 +415,15 @@ class Client:
     ) -> str:
         """Compress, reduce if needed, and send only a context-sized prompt."""
         prompt_token_limit = get_prompt_token_limit(self.model, self.api_base)
+        if allow_condense and text:
+            cleaned = clean_transcript(text)
+            logger.info(
+                "Cleaned text for %s: %d -> %d characters",
+                action,
+                len(text),
+                len(cleaned),
+            )
+            text = cleaned
         for chain_pass in range(MAX_CHAIN_PASSES + 1):
             prepared = _compress_messages(
                 self.model,
@@ -375,7 +441,7 @@ class Client:
                 self._context_error("the summarization pass limit was reached")
             if count_prompt_tokens(self.model, messages) >= prompt_token_limit:
                 self._context_error("the prompt instructions leave no room for content")
-            condensed = self._condense(text, prompt_token_limit)
+            condensed = self._condense_cached(text, prompt_token_limit)
             if count_prompt_tokens(
                 self.model, [{"role": "user", "content": condensed}]
             ) >= count_prompt_tokens(self.model, [{"role": "user", "content": text}]):
@@ -392,30 +458,35 @@ class Client:
             }
             if self.api_base:
                 completion_kwargs["api_base"] = self.api_base
+            # Reasoning models reject a custom temperature; drop what they refuse.
+            completion_kwargs["drop_params"] = True
+            completion_kwargs["timeout"] = _llm_timeout()
             if self.model.startswith(("ollama/", "ollama_chat/")):
                 # Ollama silently truncates prompts beyond its default window.
                 completion_kwargs["num_ctx"] = get_context_window(
                     self.model, self.api_base
                 )
+                # Thinking models otherwise spend the response budget on reasoning
+                # and return no text.
+                completion_kwargs["model"] = (
+                    "ollama_chat/" + self.model.split("/", 1)[1]
+                )
+                completion_kwargs["reasoning_effort"] = "none"
 
-            logger.debug(
-                "Sending LLM request to %s (action: %s, ~%d prompt tokens, limit %d)",
-                self.api_base or "provider default",
-                action,
-                count_prompt_tokens(self.model, prepared),
-                prompt_token_limit,
-            )
             started = time.monotonic()
+            global _IN_FLIGHT  # pylint: disable=global-statement
             with _IN_FLIGHT_LOCK:
-                global _IN_FLIGHT  # pylint: disable=global-statement
                 _IN_FLIGHT += 1
                 in_flight = _IN_FLIGHT
             logger.info(
-                "LLM request started (action: %s, in flight: %d, litellm "
-                "request_timeout: %ss)",
+                "LLM request started (action: %s, model: %s, in flight: %d, "
+                "timeout: %ss, ~%d prompt tokens, limit %d)",
                 action,
+                completion_kwargs["model"],
                 in_flight,
-                litellm.request_timeout,
+                completion_kwargs["timeout"],
+                count_prompt_tokens(self.model, prepared),
+                prompt_token_limit,
             )
             try:
                 response = litellm.completion(**completion_kwargs)
@@ -430,12 +501,6 @@ class Client:
                 len(response.choices[0].message.content or ""),
             )
         except litellm.exceptions.APIConnectionError as exc:
-            logger.error(
-                "LLM request failed after %.2f seconds (action: %s, %s)",
-                time.monotonic() - started,
-                action,
-                type(exc).__name__,
-            )
             endpoint_description = (
                 f"'{self.api_base}'"
                 if self.api_base
@@ -449,12 +514,16 @@ class Client:
             logger.error("%s Original error: %s", message, exc)
             raise LLMConnectionError(message) from exc
         except litellm.exceptions.APIError as exc:
-            logger.error("Failed to %s: %s", action, exc)
+            logger.error("Failed to %s: %s (%s)", action, exc, type(exc).__name__)
             raise
 
         content = response.choices[0].message.content
         if not isinstance(content, str) or not content.strip():
             message = f"Unable to {action}: model '{self.model}' returned no text."
-            logger.error(message)
+            logger.error(
+                "%s finish_reason=%s",
+                message,
+                getattr(response.choices[0], "finish_reason", None),
+            )
             raise ValueError(message)
         return content

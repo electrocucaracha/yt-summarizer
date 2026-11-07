@@ -375,6 +375,14 @@ def _resolve_api_base(
     show_envvar=True,
     help="Number of videos to process concurrently (defaults to the CPU core count).",
 )
+@click.option(
+    "--language",
+    default="en",
+    envvar="SUMMARY_LANGUAGE",
+    show_default=True,
+    show_envvar=True,
+    help="Language code for generated summaries (e.g. en, es).",
+)
 def cli(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-branches
     notion_db_id: str | None,
     notion_token_file: str,
@@ -386,6 +394,7 @@ def cli(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too
     proxy_username: str,
     proxy_password: str,
     workers: int | None = None,
+    language: str = "en",
 ):
     """Summarize YouTube videos from Notion or a local OKF collection.
 
@@ -421,6 +430,7 @@ def cli(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too
     logger.debug("Starting YouTube summarizer with log level: %s", log_level)
     logger.info("Using model: %s", model)
     logger.info("Using API base: %s", effective_api_base or "provider default")
+    logger.info("Summary language: %s", language)
 
     click.echo("Starting YouTube summarizer...")
     click.echo(f"Using model: {model}")
@@ -459,6 +469,7 @@ def cli(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too
             proxy_username=proxy_username,
             proxy_password=proxy_password,
             output_dir=output_dir,
+            language=language,
         )
 
         videos = {}
@@ -483,6 +494,11 @@ def cli(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too
         # Process videos concurrently; cap workers to the queued video count.
         video_items = list(videos.items())
         cpu_cores = os.cpu_count() or 1
+        if workers is None and model.startswith(("ollama/", "ollama_chat/")):
+            # A single Ollama server serves requests one at a time; parallel
+            # requests only queue and hit the request timeout.
+            workers = 1
+            click.echo("Ollama model detected; defaulting to 1 worker.")
         worker_count = (
             min(workers if workers is not None else cpu_cores, len(video_items))
             if video_items

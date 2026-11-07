@@ -116,3 +116,13 @@ class TestYouTubeClient(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_transcript_languages_put_requested_language_first():
+    """The requested language leads and fallbacks are not duplicated."""
+    from yt_summarizer.youtube import transcript_languages
+
+    languages = transcript_languages("es")
+    assert languages[0] == "es"
+    assert len(languages) == len(set(languages))
+    assert transcript_languages("en")[0] == "en"

@@ -57,6 +57,7 @@ class YouTubeSummarizerService:
         proxy_username: str | None = None,
         proxy_password: str | None = None,
         output_dir: str | None = None,
+        language: str = "en",
     ):
         """Initialize the summarizer service with storage and LLM clients.
 
@@ -71,6 +72,7 @@ class YouTubeSummarizerService:
             proxy_username: Optional Webshare proxy username.
             proxy_password: Optional Webshare proxy password.
             output_dir: Optional root folder of the OKF bundle to write.
+            language: Language code for generated summaries (default: en).
 
         Raises:
             ValueError: If no storage backend is configured.
@@ -78,14 +80,16 @@ class YouTubeSummarizerService:
         logger.debug("Initializing YouTube summarizer service")
 
         self.notion_db_id = notion_db_id
-        self.youtube_client = YouTubeClient()
+        self.youtube_client = YouTubeClient(language=language)
         http_client_proxy = httpx.Client()  # Default client without proxy
         if proxy_username and proxy_password:
             self.proxy_config = WebshareProxyConfig(
                 proxy_username=proxy_username, proxy_password=proxy_password
             )
             self.youtube_client = YouTubeClient(
-                proxy_username=proxy_username, proxy_password=proxy_password
+                proxy_username=proxy_username,
+                proxy_password=proxy_password,
+                language=language,
             )
             http_client_proxy = httpx.Client(proxy=self.proxy_config.url)
 
@@ -102,7 +106,7 @@ class YouTubeSummarizerService:
                 "output directory."
             )
 
-        self.llm_client = LLMClient(model=model, api_base=api_base)
+        self.llm_client = LLMClient(model=model, api_base=api_base, language=language)
         logger.debug("Service initialized successfully")
 
     def get_videos_from_notion_db(self):
@@ -224,13 +228,6 @@ class YouTubeSummarizerService:
             The updated YouTubeVideo object with all fields populated.
         """
         logger.debug("Processing video: %s", video.url)
-        logger.info(
-            "Video state before processing: title=%s summary=%s main_points=%s (%s)",
-            bool(video.title),
-            bool(video.summary),
-            bool(video.main_points),
-            video.url,
-        )
         result = copy.deepcopy(
             video
         )  # Create a copy to avoid mutating the original object

@@ -38,7 +38,14 @@ from youtube_transcript_api._errors import (
 from youtube_transcript_api.proxies import WebshareProxyConfig
 
 logger = logging.getLogger(__name__)
-SUPPORTED_TRANSCRIPT_LANGUAGES = ("es", "es-419", "en", "en-US", "en-GB")
+DEFAULT_LANGUAGE = "en"
+# Languages tried after the requested one; the LLM translates the result.
+FALLBACK_TRANSCRIPT_LANGUAGES = ("en", "en-US", "en-GB", "es", "es-419")
+
+
+def transcript_languages(language: str = DEFAULT_LANGUAGE) -> tuple[str, ...]:
+    """Return transcript languages in priority order, requested one first."""
+    return tuple(dict.fromkeys((language, *FALLBACK_TRANSCRIPT_LANGUAGES)))
 
 
 class Client:
@@ -49,14 +56,19 @@ class Client:
     """
 
     def __init__(
-        self, proxy_username: str | None = None, proxy_password: str | None = None
+        self,
+        proxy_username: str | None = None,
+        proxy_password: str | None = None,
+        language: str = DEFAULT_LANGUAGE,
     ):
         """Initialize the YouTube client and optional proxy-backed transcript API.
 
         Args:
             proxy_username: Optional proxy username for YouTube client.
             proxy_password: Optional proxy password for YouTube client.
+            language: Preferred transcript language code.
         """
+        self.languages = transcript_languages(language)
         self.ytt_api = YouTubeTranscriptApi()
         self.proxy_config = None
         if proxy_username and proxy_password:
@@ -95,9 +107,7 @@ class Client:
         logger.debug("Transcript proxy enabled: %s", self.proxy_config is not None)
         fetch_started = time.monotonic()
         try:
-            transcript = self.ytt_api.fetch(
-                video_id, languages=SUPPORTED_TRANSCRIPT_LANGUAGES
-            )
+            transcript = self.ytt_api.fetch(video_id, languages=self.languages)
         except AgeRestricted:
             logger.warning(
                 "Video is age-restricted and cannot fetch transcript: %s "
@@ -111,7 +121,7 @@ class Client:
                 "No transcript found for video ID %s in preferred languages %s "
                 "(after %.2f seconds)",
                 video_id,
-                SUPPORTED_TRANSCRIPT_LANGUAGES,
+                self.languages,
                 time.monotonic() - fetch_started,
             )
             return ""

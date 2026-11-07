@@ -176,7 +176,15 @@ def test_cli_processes_videos_concurrently_using_cpu_count_by_default(
     monkeypatch.chdir(tmp_path)
 
     result = CliRunner().invoke(
-        cli, ["--notion-db-id", "", "--output-dir", str(tmp_path)]
+        cli,
+        [
+            "--notion-db-id",
+            "",
+            "--output-dir",
+            str(tmp_path),
+            "--model",
+            "openai/gpt-4o",
+        ],
     )
 
     assert result.exit_code == 0, result.output
@@ -593,3 +601,26 @@ class TestCli(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_ollama_models_default_to_one_worker(monkeypatch, tmp_path):
+    """Ollama serves requests serially, so parallel workers are not auto-selected."""
+    service = MagicMock()
+    service.get_videos_from_filesystem.return_value = [
+        YouTubeVideo(url="https://www.youtube.com/watch?v=video1")
+    ]
+    service.upsert_video.side_effect = lambda video, **_kwargs: video
+    service.generate_playlist_summary.return_value = "Playlist summary"
+    monkeypatch.setattr(
+        "yt_summarizer.YouTubeSummarizerService", lambda **_kwargs: service
+    )
+    monkeypatch.setattr("yt_summarizer.os.cpu_count", lambda: 8)
+    monkeypatch.chdir(tmp_path)
+
+    result = CliRunner().invoke(
+        cli, ["--notion-db-id", "", "--output-dir", str(tmp_path)]
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "Using 2 worker(s)" not in result.output
+    assert "Overall  : [####################] 1/1" in result.output

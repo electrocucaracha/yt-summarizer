@@ -37,7 +37,9 @@ and YouTube thumbnail.
   and a list of main points for each video.
 - **Concurrent processing**:
   Processes videos in parallel using a default worker count based on available
-  CPU cores, configurable with `--workers`.
+  CPU cores, configurable with `--workers` (Ollama models default to 1 worker because Ollama serves requests serially).
+- Summaries are written in English by default; use `--language` (or `SUMMARY_LANGUAGE`), e.g. `--language es`, to change it.
+- `LLM_TIMEOUT` (seconds, default 1800) sets the per-request timeout and `OLLAMA_MAX_CONTEXT` (default 32768) caps the Ollama context window.
 - **Executive summaries**:
   Produces a synthesized playlist or collection-level executive summary
   at the end of the run and includes it in the generated collection.
