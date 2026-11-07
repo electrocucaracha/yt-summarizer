@@ -25,6 +25,7 @@ import contextlib
 import logging
 import os
 import sys
+import time
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
@@ -72,33 +73,48 @@ def _process_videos_concurrently(
     queues = [iter(items[index::workers]) for index in range(workers)]
     totals = [len(items[index::workers]) for index in range(workers)]
     completed = [0] * workers
-    interactive = sys.stdout.isatty()
     _draw_video_progress(completed, totals)
 
     with ThreadPoolExecutor(max_workers=workers) as executor:
         futures = {}
 
         def submit_next(worker: int) -> None:
-            item = next(queues[worker], None)
-            if item is not None:
-                url, video = item
-                logging.getLogger(__name__).info(
-                    "Worker %d processing and storing the video: %s", worker + 1, url
-                )
-                future = executor.submit(
-                    service.upsert_video, video, playlist_title=playlist_title
-                )
-                futures[future] = (worker, url)
+            try:
+                url, video = next(queues[worker])
+            except StopIteration:
+                return
+            logging.getLogger(__name__).info(
+                "Worker %d processing and storing the video: %s", worker + 1, url
+            )
+            submitted_at = time.monotonic()
+            future = executor.submit(
+                service.upsert_video, video, playlist_title=playlist_title
+            )
+            futures[future] = (worker, url, submitted_at)
 
         for worker in range(workers):
             submit_next(worker)
         while futures:
-            finished, _ = wait(futures, return_when=FIRST_COMPLETED)
-            for future in finished:
-                worker, url = futures.pop(future)
-                videos[url] = future.result()
+            for future in wait(futures, return_when=FIRST_COMPLETED)[0]:
+                worker, url, submitted_at = futures.pop(future)
+                try:
+                    videos[url] = future.result()
+                except Exception:
+                    logging.getLogger(__name__).exception(
+                        "Worker %d failed processing video after %.2f seconds: %s",
+                        worker + 1,
+                        time.monotonic() - submitted_at,
+                        url,
+                    )
+                    raise
+                logging.getLogger(__name__).info(
+                    "Worker %d completed video in %.2f seconds: %s",
+                    worker + 1,
+                    time.monotonic() - submitted_at,
+                    url,
+                )
                 completed[worker] += 1
-                _draw_video_progress(completed, totals, redraw=interactive)
+                _draw_video_progress(completed, totals, redraw=sys.stdout.isatty())
                 submit_next(worker)
 
 

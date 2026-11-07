@@ -186,13 +186,27 @@ class YouTubeSummarizerService:
 
     def _fetch_with_retries(self, fetch_function, *args, retries=3, **kwargs):
         """Retry a function up to `retries` times before giving up."""
+        target = kwargs.get("url") or (args[0] if args else "unknown target")
         for attempt in range(1, retries + 1):
+            logger.debug(
+                "Starting fetch attempt %d/%d for %s",
+                attempt,
+                retries,
+                target,
+            )
             try:
                 return fetch_function(*args, **kwargs)
             except (OSError, TypeError, ValueError, httpx.HTTPError) as e:
-                logger.warning("Attempt %d/%d failed: %s", attempt, retries, str(e))
+                logger.warning(
+                    "Fetch attempt %d/%d failed for %s (%s): %s",
+                    attempt,
+                    retries,
+                    target,
+                    type(e).__name__,
+                    e,
+                )
                 if attempt == retries:
-                    logger.error("All retry attempts failed.")
+                    logger.error("All %d fetch attempts failed for %s", retries, target)
                     return None
         return None
 
@@ -230,6 +244,11 @@ class YouTubeSummarizerService:
                     "Skipping video due to transcript fetch failure: %s", result.url
                 )
             else:
+                logger.debug(
+                    "Transcript ready for video %s (%d characters)",
+                    result.url,
+                    len(transcript),
+                )
                 if not result.summary:
                     logger.info("Generating summary for video: %s", result.url)
                     result.summary = self.llm_client.summarize(transcript)
@@ -384,7 +403,12 @@ class YouTubeSummarizerService:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 logger.debug("Calling extract_info with playlist_url: %s", playlist_url)
                 info = ydl.extract_info(playlist_url, download=False)
-                logger.debug("Extracted info: %s", info)
+            logger.debug(
+                "Extracted playlist metadata: id=%s title=%r entries=%d",
+                info.get("id"),
+                info.get("title"),
+                len(info.get("entries") or []),
+            )
         except yt_dlp.utils.DownloadError as e:
             logger.error("Failed to process playlist due to download error: %s", str(e))
             raise

@@ -1,5 +1,6 @@
 """Tests for the YouTube client module."""
 
+import logging
 import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -25,6 +26,22 @@ class TestYouTubeClient(unittest.TestCase):
             "https://youtube.com/watch?v=mock_id"
         )
         self.assertEqual(transcript, "Sample text")
+
+    @patch("yt_summarizer.youtube.YouTubeTranscriptApi.fetch")
+    def test_get_transcript_logs_outcome_without_transcript_content(self, mock_fetch):
+        """Transcript diagnostics report progress without dumping transcript text."""
+        mock_fetch.return_value = [{"text": "Sample text", "start": 0, "duration": 5}]
+
+        with self.assertLogs("yt_summarizer.youtube", level=logging.DEBUG) as captured:
+            transcript = self.client.get_video_transcript(
+                "https://youtube.com/watch?v=mock_id"
+            )
+
+        self.assertEqual("Sample text", transcript)
+        messages = "\n".join(captured.output)
+        self.assertIn("Transcript fetch completed for video ID mock_id", messages)
+        self.assertIn("1 snippets, 11 characters", messages)
+        self.assertNotIn("Sample text", messages)
 
     @patch("yt_summarizer.youtube.YouTubeTranscriptApi.fetch")
     def test_get_transcript_from_snippet_iterator(self, mock_fetch):

@@ -22,6 +22,7 @@ robust handling of various YouTube video formats and restrictions.
 """
 
 import logging
+import time
 from urllib.parse import parse_qs, urlparse
 
 import requests
@@ -59,10 +60,10 @@ class Client:
         self.ytt_api = YouTubeTranscriptApi()
         self.proxy_config = None
         if proxy_username and proxy_password:
-            logger.debug("Using proxy authentication for transcript retrieval")
             self.proxy_config = WebshareProxyConfig(
                 proxy_username=proxy_username, proxy_password=proxy_password
             )
+            logger.debug("Using Webshare proxy for transcript retrieval")
             self.ytt_api = YouTubeTranscriptApi(proxy_config=self.proxy_config)
 
     def get_video_transcript(  # pylint: disable=too-many-return-statements,too-many-branches
@@ -72,15 +73,19 @@ class Client:
 
         The transcript API may return either a ``FetchedTranscript`` object or a
         list of snippet dictionaries. Both shapes are normalized into a single
-        space-separated string. On unavailable transcripts or request failures,
-        the method logs the problem and returns an empty string.
+        space-separated string. Unavailable transcripts return an empty string;
+        unexpected API errors and malformed responses are logged and raised.
 
         Args:
             url: Full YouTube watch URL containing the ``v`` query parameter.
 
         Returns:
-            The complete transcript text, or ``""`` when no transcript can be
-            retrieved.
+            The complete transcript text, or ``""`` when the video has no
+            available transcript.
+
+        Raises:
+            TypeError: If a fetched transcript contains malformed snippets.
+            SystemExit: If the transcript API returns an unsupported structure.
         """
 
         query = urlparse(url).query
@@ -88,35 +93,58 @@ class Client:
 
         logger.info("Fetching transcript for video ID: %s", video_id)
         logger.debug("Transcript proxy enabled: %s", self.proxy_config is not None)
+        fetch_started = time.monotonic()
         try:
             transcript = self.ytt_api.fetch(
                 video_id, languages=SUPPORTED_TRANSCRIPT_LANGUAGES
             )
-            logger.debug("Transcript fetched successfully: %s", transcript)
         except AgeRestricted:
-            logger.warning("Video is age-restricted and cannot fetch transcript.")
+            logger.warning(
+                "Video is age-restricted and cannot fetch transcript: %s "
+                "(after %.2f seconds)",
+                video_id,
+                time.monotonic() - fetch_started,
+            )
             return ""
         except NoTranscriptFound:
             logger.warning(
-                "No transcript found for video ID %s in preferred languages %s",
+                "No transcript found for video ID %s in preferred languages %s "
+                "(after %.2f seconds)",
                 video_id,
                 SUPPORTED_TRANSCRIPT_LANGUAGES,
+                time.monotonic() - fetch_started,
             )
             return ""
         except TranscriptsDisabled:
-            logger.warning("Transcripts are disabled for video ID: %s", video_id)
+            logger.warning(
+                "Transcripts are disabled for video ID: %s (after %.2f seconds)",
+                video_id,
+                time.monotonic() - fetch_started,
+            )
             return ""
         except (VideoUnavailable, VideoUnplayable):
-            logger.warning("Video is unavailable or unplayable: %s", video_id)
+            logger.warning(
+                "Video is unavailable or unplayable: %s (after %.2f seconds)",
+                video_id,
+                time.monotonic() - fetch_started,
+            )
             return ""
         except Exception as e:
-            logger.error(
-                "Error fetching transcript for video ID %s: %s", video_id, str(e)
+            logger.exception(
+                "Error fetching transcript for video ID %s after %.2f seconds: %s",
+                video_id,
+                time.monotonic() - fetch_started,
+                e,
             )
             raise
 
-        # Log the raw transcript structure for debugging
-        logger.debug("Raw transcript structure: %s", transcript)
+        logger.debug(
+            "Transcript fetch completed for video ID %s in %.2f seconds "
+            "(response type: %s)",
+            video_id,
+            time.monotonic() - fetch_started,
+            type(transcript).__name__,
+        )
 
         # Handle FetchedTranscript type
         if hasattr(transcript, "snippets"):
@@ -125,12 +153,11 @@ class Client:
                 transcript_parts = []
 
                 for snippet in transcript.snippets:
-                    logger.debug("Snippet object structure: %s", snippet)
                     if not hasattr(snippet, "text"):
                         logger.error(
-                            "Unexpected snippet type: %s. Object details: %s",
+                            "Unexpected snippet type for video ID %s: %s",
+                            video_id,
                             type(snippet),
-                            snippet,
                         )
                         raise TypeError("Unsupported snippet type encountered.")
                     transcript_parts.append(snippet.text)
@@ -143,8 +170,11 @@ class Client:
                     logger.error("FetchedTranscript did not contain any snippets.")
                     raise TypeError("FetchedTranscript contains no snippets.")
                 logger.debug(
-                    "Successfully processed FetchedTranscript with %d snippets",
+                    "Successfully processed transcript for video ID %s: "
+                    "%d snippets, %d characters",
+                    video_id,
                     processed_snippet_count,
+                    len(transcript_text),
                 )
                 return transcript_text
             except AttributeError as e:
@@ -160,20 +190,28 @@ class Client:
             ):
                 transcript_text = " ".join(snippet["text"] for snippet in transcript)
                 logger.debug(
-                    "Successfully retrieved transcript with %d snippets",
+                    "Successfully processed transcript for video ID %s: "
+                    "%d snippets, %d characters",
+                    video_id,
                     len(transcript),
+                    len(transcript_text),
                 )
                 return transcript_text
             logger.error(
-                "Transcript list contains invalid snippet structures: %s",
-                [
-                    snippet
+                "Transcript list for video ID %s contains %d invalid snippet "
+                "structure(s)",
+                video_id,
+                sum(
+                    not isinstance(snippet, dict) or "text" not in snippet
                     for snippet in transcript
-                    if not isinstance(snippet, dict) or "text" not in snippet
-                ],
+                ),
             )
         else:
-            logger.error("Unexpected transcript structure type: %s", type(transcript))
+            logger.error(
+                "Unexpected transcript structure for video ID %s: %s",
+                video_id,
+                type(transcript).__name__,
+            )
             raise SystemExit("Critical error: Unexpected transcript structure.")
 
         return ""
