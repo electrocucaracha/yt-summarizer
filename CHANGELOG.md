@@ -9,6 +9,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [8.2.1] - 2026-11-07
+
+### Changed
+
+- Simplified exception handling in the `get_context_window` function to improve clarity and maintainability without affecting its behavior or requiring any migration steps. [2da29e17](https://github.com/electrocucaracha/yt-summarizer/commit/2da29e17b2499453400fe23a9dfad46cefc73660)
+
+## [8.2.0] - 2026-11-07
+
+### Added
+
+- Enabled customizable summaries for multilingual users by introducing a --language option and configurable context/window limits for Ollama models, ensuring reliable and accurate output across diverse LLM backends and contexts. [ffc87812](https://github.com/electrocucaracha/yt-summarizer/commit/ffc878124ff5d7367038f8ac8027d5682909c631)
+
+## [8.1.0] - 2026-11-06
+
+### Added
+
+- Enabled detailed logging throughout the video processing and LLM request workflow to aid debugging and operational visibility, and optimized context window detection for Ollama-backed models to improve observability and reliability while maintaining compatibility with existing providers. [9d8f1197](https://github.com/electrocucaracha/yt-summarizer/commit/9d8f119759a45c940d3c9efd9900c241907fc9e2)
+
+## [8.0.0] - 2026-11-06
+
+### Removed
+
+- Simplified the transcript fetching logging to prevent unnecessary exposure of exception information. [95f314c0](https://github.com/electrocucaracha/yt-summarizer/commit/95f314c0ee7fd8c85418b79f2dc91e995345fcd4)
+
+## [7.6.1] - 2026-11-06
+
+### Changed
+
+- Optimized the docs workflow to run contributing.test and contributing.fmt tasks sequentially, improving the reliability and consistency of documentation-related checks by preventing potential race conditions and output mixing issues. [0af8b375](https://github.com/electrocucaracha/yt-summarizer/commit/0af8b37527b1b528b80f2d1a9567e986cfecfa7b)
+
+## [7.6.0] - 2026-11-06
+
+### Added
+
+- Optimized transcript fetching diagnostics with structured debug logs and improved worker pool progress reporting. [b128b52d](https://github.com/electrocucaracha/yt-summarizer/commit/b128b52d07abc308052c22aa3df3da38dc697a54)
+
+## [7.5.0] - 2026-11-06
+
+### Added
+
+- Enabled per-worker and overall video processing progress bars to display completed counts, percentage, and remaining videos, updating after each video completes, improving the user experience with a clearer view of processing progress. [d157f2c8](https://github.com/electrocucaracha/yt-summarizer/commit/d157f2c84aa194a4be92de890f7bec622e59d1b0)
+
+## [7.4.0] - 2026-11-06
+
+### Added
+
+- Optimized video analysis performance by enabling concurrent processing with a configurable --workers option. [122c9efe](https://github.com/electrocucaracha/yt-summarizer/commit/122c9efe3ae9fadaf76534c0b654ee8183ef853a)
+
+## [7.3.0] - 2026-11-06
+
+### Added
+
+- Detailed documentation for recent updates has been added to the project history, enabling users to track features and fixes across versions from 7.2.1 to 6.3.0. [b38e9480](https://github.com/electrocucaracha/yt-summarizer/commit/b38e94806c47d7e366407a0d6ce2581e5e24323b)
+
 ## [7.2.1] - 2026-11-06
 
 ### Changed
