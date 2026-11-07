@@ -95,6 +95,15 @@ yt_summarizer \
 
 ## Configuration options
 
+During video processing, the CLI displays an overall progress bar and a bar
+for each worker, showing completed/assigned videos, percentage, and remaining
+videos. Videos are assigned to worker queues in round-robin order. Each bar
+advances after a video has finished processing and storage. The executive
+summary starts after all videos finish and has a separate spinner.
+
+In an interactive terminal, the bars update in place. Redirected output records
+progress snapshots without terminal cursor-control sequences.
+
 - `--notion-db-id`: Notion database ID (required, or set `NOTION_DATABASE_ID` environment variable)
 - `--notion-token-file`: Path to file containing Notion API token (default: `/etc/notion/secrets.txt`, or set `NOTION_TOKEN_FILE`)
 - `--model`: LLM model identifier (default: `ollama/llama3.2`, or set `LLM_MODEL`)

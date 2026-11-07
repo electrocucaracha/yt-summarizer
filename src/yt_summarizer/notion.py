@@ -51,7 +51,7 @@ class Client:
             token: Notion API authentication token for accessing databases.
             client: Optional HTTP client instance for proxy configuration.
         """
-        logger.debug("Initializing Client with token: %s", token)
+        logger.debug("Initializing Notion client")
         self.token = token
         self.notion_client = NotionClient(auth=token, client=client)
 

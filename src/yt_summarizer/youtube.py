@@ -87,7 +87,7 @@ class Client:
         video_id = parse_qs(query)["v"][0]
 
         logger.info("Fetching transcript for video ID: %s", video_id)
-        logger.debug("Proxy configuration: %s", self.proxy_config)
+        logger.debug("Transcript proxy enabled: %s", self.proxy_config is not None)
         try:
             transcript = self.ytt_api.fetch(
                 video_id, languages=SUPPORTED_TRANSCRIPT_LANGUAGES

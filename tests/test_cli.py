@@ -17,11 +17,77 @@ from click.testing import CliRunner
 from yt_summarizer import (
     LLMConnectionError,
     LLMContextWindowError,
+    _draw_video_progress,
+    _process_videos_concurrently,
     _resolve_api_base,
     _suppress_litellm_output,
     cli,
 )
 from yt_summarizer.model import YouTubeVideo
+
+
+@pytest.mark.parametrize("log_level", ["DEBUG", "INFO", "WARNING"])
+def test_cli_configures_logging_for_all_modules_with_existing_root_handler(
+    tmp_path, log_level
+):
+    """CLI logging replaces preconfigured handlers and includes worker messages."""
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(Path(__file__).resolve().parents[1] / "src")
+    script = """
+import logging
+from unittest.mock import MagicMock, patch
+
+logging.basicConfig(level=logging.CRITICAL)
+from yt_summarizer import cli
+from yt_summarizer.model import YouTubeVideo
+from click.testing import CliRunner
+
+video = YouTubeVideo(url="https://www.youtube.com/watch?v=video1")
+service = MagicMock()
+service.get_videos_from_filesystem.return_value = [video]
+service.generate_playlist_summary.return_value = "Summary"
+
+def process_video(video, **kwargs):
+    for module in ("yt_summarizer", "yt_summarizer.llm", "yt_summarizer.model",
+                   "yt_summarizer.notion", "yt_summarizer.okf",
+                   "yt_summarizer.service", "yt_summarizer.token_budget",
+                   "yt_summarizer.youtube"):
+        logger = logging.getLogger(module)
+        logger.debug("debug marker")
+        logger.info("info marker")
+        logger.warning("warning marker")
+    return video
+
+service.upsert_video.side_effect = process_video
+with patch("yt_summarizer.YouTubeSummarizerService", return_value=service):
+    result = CliRunner().invoke(cli, ["--notion-db-id", "", "--output-dir", ".",
+                                     "--workers", "1", "--log-level", LOG_LEVEL])
+assert result.exit_code == 0, result.output
+logging.shutdown()
+"""
+    subprocess.run(
+        [sys.executable, "-c", f"LOG_LEVEL = {log_level!r}\n{script}"],
+        capture_output=True,
+        check=True,
+        cwd=tmp_path,
+        env=env,
+        text=True,
+    )
+
+    log = (tmp_path / "yt_summarizer.log").read_text(encoding="utf-8")
+    for module in (
+        "yt_summarizer",
+        "yt_summarizer.llm",
+        "yt_summarizer.model",
+        "yt_summarizer.notion",
+        "yt_summarizer.okf",
+        "yt_summarizer.service",
+        "yt_summarizer.token_budget",
+        "yt_summarizer.youtube",
+    ):
+        assert f" - {module} - WARNING - [ThreadPoolExecutor" in log
+    assert ("debug marker" in log) == (log_level == "DEBUG")
+    assert ("info marker" in log) == (log_level != "WARNING")
 
 
 def test_dotenv_loads_before_cli_configuration_and_preserves_environment(tmp_path):
@@ -83,6 +149,8 @@ def test_cli_reports_context_window_failures(monkeypatch, tmp_path, stage):
     assert "larger context window" in result.output
     assert "YouTube summarizer has completed." not in result.output
     service.store_playlist.assert_not_called()
+    if stage == "upsert_video":
+        assert "1/1 (100%)" not in result.output
 
 
 def test_cli_processes_videos_concurrently_using_cpu_count_by_default(
@@ -113,9 +181,53 @@ def test_cli_processes_videos_concurrently_using_cpu_count_by_default(
 
     assert result.exit_code == 0, result.output
     assert "Using 2 worker(s) (auto-selected from 2 CPU core(s))." in result.output
+    assert "Overall  : [--------------------] 0/2 (0%) | 2 remaining" in result.output
+    assert "Overall  : [####################] 2/2 (100%) | 0 remaining" in result.output
+    for worker in (1, 2):
+        assert f"Worker {worker:>2}: [####################] 1/1" in result.output
+    assert "\x1b[" not in result.output
     service.generate_playlist_summary.assert_called_once_with(
         [first_video, second_video], playlist_title=None
     )
+
+
+@pytest.mark.parametrize("interactive", [False, True])
+def test_worker_progress_updates_after_each_video(monkeypatch, capsys, interactive):
+    """Uneven worker queues update both bar levels once per successful result."""
+    videos = {
+        str(index): YouTubeVideo(url=f"https://www.youtube.com/watch?v={index}")
+        for index in range(5)
+    }
+    original_urls = list(videos)
+    service = MagicMock()
+    service.upsert_video.side_effect = lambda video, **_kwargs: video
+    snapshots = []
+
+    def draw(completed, totals, *, redraw=False):
+        snapshots.append((completed.copy(), totals.copy(), redraw))
+        _draw_video_progress(completed, totals, redraw=redraw)
+
+    monkeypatch.setattr("yt_summarizer._draw_video_progress", draw)
+    monkeypatch.setattr(sys.stdout, "isatty", lambda: interactive)
+
+    _process_videos_concurrently(service, videos, 2, "Playlist")
+
+    output = capsys.readouterr().out
+    assert len(snapshots) == 6
+    assert [sum(done) for done, _, _ in snapshots] == list(range(6))
+    assert all(totals == [3, 2] for _, totals, _ in snapshots)
+    assert snapshots[-1] == ([3, 2], [3, 2], interactive)
+    assert list(videos) == original_urls
+    assert service.upsert_video.call_count == 5
+    assert all(
+        call.kwargs["playlist_title"] == "Playlist"
+        for call in service.upsert_video.call_args_list
+    )
+    assert "5/5 (100%) | 0 remaining" in output
+    assert ("\\x1b" in repr(output)) == interactive
+    if interactive:
+        assert output.count("\x1b[3A") == 5
+        assert output.count("\x1b[2K") == 15
 
 
 class _FakeProgressBar:
@@ -137,34 +249,20 @@ class TestCli(unittest.TestCase):
     @patch("yt_summarizer.logging.basicConfig")
     @patch("yt_summarizer._read_token_from_file", return_value="mock_token")
     @patch("yt_summarizer.click.echo")
-    @patch("yt_summarizer.click.progressbar")
     @patch("yt_summarizer.YouTubeSummarizerService")
-    def test_cli_uses_progress_item_display_without_per_item_echoes(
+    def test_cli_displays_overall_and_worker_progress(
         self,
         mock_service_cls,
-        mock_progressbar,
         mock_echo,
         _mock_read_token,
         _mock_basic_config,
     ):
-        """The CLI should show current progress items via the bar, not extra echoes."""
+        """The CLI displays initial and completed progress for each worker."""
         notion_video = YouTubeVideo(url="https://www.youtube.com/watch?v=video1")
         mock_service = mock_service_cls.return_value
         mock_service.get_videos_from_notion_db.return_value = [notion_video]
         mock_service.get_videos_from_playlist.return_value = []
         mock_service.upsert_video.side_effect = lambda video, playlist_title=None: video
-
-        progressbar_calls = []
-        displayed_items = []
-
-        def fake_progressbar(iterable, **kwargs):
-            items = list(iterable)
-            progressbar_calls.append({"items": items, **kwargs})
-            if items:
-                displayed_items.append(kwargs["item_show_func"](items[0]))
-            return _FakeProgressBar(items)
-
-        mock_progressbar.side_effect = fake_progressbar
 
         cli.callback(
             notion_db_id="mock_db_id",
@@ -178,8 +276,16 @@ class TestCli(unittest.TestCase):
             proxy_password=None,
         )
 
-        self.assertEqual(len(progressbar_calls), 1)
-        self.assertEqual(displayed_items, [notion_video.url])
+        messages = [call.args[0] for call in mock_echo.call_args_list if call.args]
+        self.assertIn(
+            "Overall  : [--------------------] 0/1 (0%) | 1 remaining", messages
+        )
+        self.assertIn(
+            "Overall  : [####################] 1/1 (100%) | 0 remaining", messages
+        )
+        self.assertIn(
+            "Worker  1: [####################] 1/1 (100%) | 0 remaining", messages
+        )
         self.assertNotIn(
             f"Fetching page: {notion_video.url}",
             [call.args[0] for call in mock_echo.call_args_list if call.args],

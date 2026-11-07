@@ -25,7 +25,7 @@ import contextlib
 import logging
 import os
 import sys
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
@@ -41,6 +41,65 @@ from .okf import DEFAULT_ROOT as DEFAULT_OUTPUT_DIR
 from .service import YouTubeSummarizerService
 
 load_dotenv(Path.cwd() / ".env")
+
+
+def _draw_video_progress(
+    completed: list[int], totals: list[int], *, redraw: bool = False
+) -> None:
+    """Render one overall bar and one bar per worker on the caller's thread."""
+    if redraw:
+        click.echo(f"\x1b[{len(totals) + 1}A", nl=False)
+    counts = [(sum(completed), sum(totals)), *zip(completed, totals)]
+    for index, (done, total) in enumerate(counts):
+        filled = 20 * done // total if total else 20
+        percent = 100 * done // total if total else 100
+        label = "Overall  " if index == 0 else f"Worker {index:>2}"
+        line = (
+            f"{label}: [{'#' * filled}{'-' * (20 - filled)}] "
+            f"{done}/{total} ({percent}%) | {total - done} remaining"
+        )
+        click.echo(f"\r\x1b[2K{line}" if redraw else line)
+
+
+def _process_videos_concurrently(
+    service: YouTubeSummarizerService,
+    videos: dict[str, YouTubeVideo],
+    workers: int,
+    playlist_title: str | None,
+) -> None:
+    """Process round-robin worker queues and update progress after each result."""
+    items = list(videos.items())
+    queues = [iter(items[index::workers]) for index in range(workers)]
+    totals = [len(items[index::workers]) for index in range(workers)]
+    completed = [0] * workers
+    interactive = sys.stdout.isatty()
+    _draw_video_progress(completed, totals)
+
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        futures = {}
+
+        def submit_next(worker: int) -> None:
+            item = next(queues[worker], None)
+            if item is not None:
+                url, video = item
+                logging.getLogger(__name__).info(
+                    "Worker %d processing and storing the video: %s", worker + 1, url
+                )
+                future = executor.submit(
+                    service.upsert_video, video, playlist_title=playlist_title
+                )
+                futures[future] = (worker, url)
+
+        for worker in range(workers):
+            submit_next(worker)
+        while futures:
+            finished, _ = wait(futures, return_when=FIRST_COMPLETED)
+            for future in finished:
+                worker, url = futures.pop(future)
+                videos[url] = future.result()
+                completed[worker] += 1
+                _draw_video_progress(completed, totals, redraw=interactive)
+                submit_next(worker)
 
 
 def _merge_stored_videos(
@@ -323,6 +382,7 @@ def cli(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too
     logging.basicConfig(
         level=getattr(logging, log_level.upper()),
         format="%(asctime)s - %(name)s - %(levelname)s - [%(threadName)s] - %(message)s",
+        force=True,
         handlers=[
             RotatingFileHandler(log_file, maxBytes=10 * 1024 * 1024, backupCount=5),
         ],
@@ -421,27 +481,10 @@ def cli(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too
             click.echo(f"Using {worker_count} worker(s) (from --workers).")
 
         if video_items:
-            with (
-                _suppress_litellm_output(),
-                ThreadPoolExecutor(max_workers=worker_count) as executor,
-            ):
-                future_to_url = {}
-                for url, video in video_items:
-                    logger.info("Processing and storing the video: %s", url)
-                    future_to_url[
-                        executor.submit(
-                            service.upsert_video, video, playlist_title=playlist_title
-                        )
-                    ] = url
-
-                with click.progressbar(
-                    as_completed(future_to_url),
-                    length=len(future_to_url),
-                    label="Processing videos",
-                    item_show_func=lambda future: future_to_url[future],
-                ) as progress_iter:
-                    for future in progress_iter:
-                        videos[future_to_url[future]] = future.result()
+            with _suppress_litellm_output():
+                _process_videos_concurrently(
+                    service, videos, worker_count, playlist_title
+                )
         click.echo("Generating executive summary...")
         with _suppress_litellm_output(), click_spinner.spinner():
             playlist_summary = service.generate_playlist_summary(
