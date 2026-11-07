@@ -21,6 +21,8 @@ This module abstracts the complexity of LLM interactions for seamless integratio
 """
 
 import logging
+import threading
+import time
 from typing import NoReturn
 
 import litellm
@@ -28,10 +30,13 @@ import litellm
 from .token_budget import (
     RESPONSE_TOKEN_RESERVE,
     count_prompt_tokens,
+    get_context_window,
     get_prompt_token_limit,
 )
 
 logger = logging.getLogger(__name__)
+_IN_FLIGHT = 0
+_IN_FLIGHT_LOCK = threading.Lock()
 TRANSCRIPT_SUMMARY_CHAR_LIMIT = 2000
 MAIN_POINTS_CHAR_LIMIT = 2000
 EXECUTIVE_SUMMARY_CHAR_LIMIT = 6000
@@ -352,7 +357,7 @@ class Client:
         allow_condense: bool = True,
     ) -> str:
         """Compress, reduce if needed, and send only a context-sized prompt."""
-        prompt_token_limit = get_prompt_token_limit(self.model)
+        prompt_token_limit = get_prompt_token_limit(self.model, self.api_base)
         for chain_pass in range(MAX_CHAIN_PASSES + 1):
             prepared = _compress_messages(
                 self.model,
@@ -387,9 +392,50 @@ class Client:
             }
             if self.api_base:
                 completion_kwargs["api_base"] = self.api_base
+            if self.model.startswith(("ollama/", "ollama_chat/")):
+                # Ollama silently truncates prompts beyond its default window.
+                completion_kwargs["num_ctx"] = get_context_window(
+                    self.model, self.api_base
+                )
 
-            response = litellm.completion(**completion_kwargs)
+            logger.debug(
+                "Sending LLM request to %s (action: %s, ~%d prompt tokens, limit %d)",
+                self.api_base or "provider default",
+                action,
+                count_prompt_tokens(self.model, prepared),
+                prompt_token_limit,
+            )
+            started = time.monotonic()
+            with _IN_FLIGHT_LOCK:
+                global _IN_FLIGHT  # pylint: disable=global-statement
+                _IN_FLIGHT += 1
+                in_flight = _IN_FLIGHT
+            logger.info(
+                "LLM request started (action: %s, in flight: %d, litellm "
+                "request_timeout: %ss)",
+                action,
+                in_flight,
+                litellm.request_timeout,
+            )
+            try:
+                response = litellm.completion(**completion_kwargs)
+            finally:
+                with _IN_FLIGHT_LOCK:
+                    _IN_FLIGHT -= 1
+            logger.info(
+                "LLM request completed in %.2f seconds (action: %s, response "
+                "characters: %d)",
+                time.monotonic() - started,
+                action,
+                len(response.choices[0].message.content or ""),
+            )
         except litellm.exceptions.APIConnectionError as exc:
+            logger.error(
+                "LLM request failed after %.2f seconds (action: %s, %s)",
+                time.monotonic() - started,
+                action,
+                type(exc).__name__,
+            )
             endpoint_description = (
                 f"'{self.api_base}'"
                 if self.api_base

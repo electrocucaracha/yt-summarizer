@@ -496,16 +496,24 @@ def cli(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too
         else:
             click.echo(f"Using {worker_count} worker(s) (from --workers).")
 
+        logger.info(
+            "Queued %d video(s); using %d worker(s)", len(video_items), worker_count
+        )
         if video_items:
             with _suppress_litellm_output():
                 _process_videos_concurrently(
                     service, videos, worker_count, playlist_title
                 )
+        logger.info("Video processing finished; generating executive summary")
         click.echo("Generating executive summary...")
         with _suppress_litellm_output(), click_spinner.spinner():
             playlist_summary = service.generate_playlist_summary(
                 list(videos.values()), playlist_title=playlist_title
             )
+        logger.info(
+            "Executive summary generated (%d characters); storing playlist",
+            len(playlist_summary),
+        )
         service.store_playlist(
             list(videos.values()),
             playlist_title=playlist_title,

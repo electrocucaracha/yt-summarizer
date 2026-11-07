@@ -224,6 +224,13 @@ class YouTubeSummarizerService:
             The updated YouTubeVideo object with all fields populated.
         """
         logger.debug("Processing video: %s", video.url)
+        logger.info(
+            "Video state before processing: title=%s summary=%s main_points=%s (%s)",
+            bool(video.title),
+            bool(video.summary),
+            bool(video.main_points),
+            video.url,
+        )
         result = copy.deepcopy(
             video
         )  # Create a copy to avoid mutating the original object
@@ -252,9 +259,19 @@ class YouTubeSummarizerService:
                 if not result.summary:
                     logger.info("Generating summary for video: %s", result.url)
                     result.summary = self.llm_client.summarize(transcript)
+                    logger.info(
+                        "Summary generated for video %s (%d characters)",
+                        result.url,
+                        len(result.summary),
+                    )
                 if not result.main_points:
                     logger.info("Extracting main points for video: %s", result.url)
                     result.main_points = self.llm_client.get_main_points(transcript)
+                    logger.info(
+                        "Main points generated for video %s (%d characters)",
+                        result.url,
+                        len(result.main_points),
+                    )
 
         return result
 

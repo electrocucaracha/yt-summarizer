@@ -16,7 +16,7 @@ def test_get_prompt_token_limit_uses_litellm_model_metadata(monkeypatch):
     monkeypatch.setattr(token_budget.litellm, "get_model_info", get_model_info)
 
     assert token_budget.get_prompt_token_limit("known-model") == 15_360
-    assert observed == [{"model": "known-model"}]
+    assert observed == [{"model": "known-model", "api_base": None}]
 
 
 def test_get_prompt_token_limit_uses_conservative_fallback(monkeypatch):
@@ -99,3 +99,45 @@ def test_tokenizer_failure_uses_byte_estimate(monkeypatch, caplog):
         == 21
     )
     assert "unsupported tokenizer" in caplog.text
+
+
+def test_ollama_window_comes_from_server_and_is_capped(monkeypatch):
+    """Ollama models use the server-reported window, capped by the env limit."""
+    token_budget._ollama_context_length.cache_clear()
+    monkeypatch.delenv("OLLAMA_MAX_CONTEXT", raising=False)
+    calls = []
+
+    class Response:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"model_info": {"qwen3.context_length": 262_144}}
+
+    def post(url, **kwargs):
+        calls.append((url, kwargs["json"]))
+        return Response()
+
+    monkeypatch.setattr(token_budget.httpx, "post", post)
+
+    window = token_budget.get_context_window("ollama/qwen3:27b", "http://host:11434/")
+    assert window == 32_768
+    monkeypatch.setenv("OLLAMA_MAX_CONTEXT", "100000")
+    assert token_budget.get_context_window(
+        "ollama/qwen3:27b", "http://host:11434/"
+    ) == (100_000)
+    assert calls == [("http://host:11434/api/show", {"model": "qwen3:27b"})]
+    token_budget._ollama_context_length.cache_clear()
+
+
+def test_ollama_window_falls_back_when_server_unreachable(monkeypatch):
+    """An unreachable Ollama server keeps the conservative window."""
+    token_budget._ollama_context_length.cache_clear()
+
+    def post(*_args, **_kwargs):
+        raise token_budget.httpx.ConnectError("refused")
+
+    monkeypatch.setattr(token_budget.httpx, "post", post)
+
+    assert token_budget.get_context_window("ollama/x", "http://h:1") == 8_192
+    token_budget._ollama_context_length.cache_clear()

@@ -55,7 +55,7 @@ class TestLLMClient(unittest.TestCase):
 
             self.client.summarize("Transcript text")
 
-        mock_token_limit.assert_called_once_with(self.mock_model)
+        mock_token_limit.assert_called_once_with(self.mock_model, self.mock_api_base)
         mock_compress.assert_called_once()
         compression_kwargs = mock_compress.call_args.kwargs
         self.assertIn("Transcript text", compression_kwargs["messages"][1]["content"])
@@ -282,7 +282,9 @@ def fixture_budgeted_completion(monkeypatch):
         return sum(len(message["content"].encode("utf-8")) + 16 for message in messages)
 
     monkeypatch.setattr(llm, "headroom_compress", None)
-    monkeypatch.setattr(llm, "get_prompt_token_limit", lambda _model: 1200)
+    monkeypatch.setattr(
+        llm, "get_prompt_token_limit", lambda _model, _api_base=None: 1200
+    )
     monkeypatch.setattr(llm.litellm, "token_counter", token_count)
     calls = []
 
