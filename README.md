@@ -35,6 +35,9 @@ and YouTube thumbnail.
 - **Per-video analysis**:
   Generates a concise summary
   and a list of main points for each video.
+- **Concurrent processing**:
+  Processes videos in parallel using a default worker count based on available
+  CPU cores, configurable with `--workers`.
 - **Executive summaries**:
   Produces a synthesized playlist or collection-level executive summary
   at the end of the run and includes it in the generated collection.
@@ -56,7 +59,8 @@ and YouTube thumbnail.
 
 1. Load existing video records from Notion.
 2. Optionally expand the queue with videos discovered from `--playlist-url`.
-3. Fetch each video's title and transcript from YouTube.
+3. Fetch each video's title and transcript from YouTube, in parallel across
+   videos.
 4. Generate a summary and main points for each video with the configured LLM.
 5. Upsert the results into configured storage backends.
 6. Print an executive summary across the processed collection.

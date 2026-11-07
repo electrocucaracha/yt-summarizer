@@ -15,7 +15,8 @@ Provide a playlist URL to populate a local bundle:
 yt_summarizer \
   --playlist-url "https://www.youtube.com/playlist?list=PLAYLIST_ID" \
   --model "ollama/llama3.2" \
-  --api-base "http://localhost:11434"
+  --api-base "http://localhost:11434" \
+  --workers 4
 ```
 
 Use `--output-dir` to write somewhere other than `docs/`:
@@ -99,6 +100,8 @@ yt_summarizer \
 - `--model`: LLM model identifier (default: `ollama/llama3.2`, or set `LLM_MODEL`)
 - `--api-base`: LLM API base URL (default: `http://localhost:11434`, or set `LLM_API_BASE`)
 - `--playlist-url`: Optional YouTube playlist URL to add to the queue
+- `--workers`: Number of videos to process concurrently (defaults to the CPU
+  core count, or set `WORKERS`)
 - `--output-dir`: OKF bundle root. Defaults to `docs` in filesystem mode, or is
   disabled when omitted with Notion mode. When set, an environment-provided
   `NOTION_DATABASE_ID` is ignored; pass `--notion-db-id` explicitly to enable
@@ -120,6 +123,7 @@ When the configured LLM endpoint cannot be reached, the CLI now exits with a spe
 | LLM_MODEL          | ollama/llama3.2          | LLM model identifier for analysis                  |
 | LLM_API_BASE       | `http://localhost:11434` | Base URL for the LLM API endpoint                  |
 | OUTPUT_DIR         |                          | OKF bundle root                                    |
+| WORKERS            | CPU core count           | Number of videos to process concurrently           |
 | PROXY_USERNAME     |                          | Optional Webshare proxy username                   |
 | PROXY_PASSWORD     |                          | Optional Webshare proxy password                   |
 

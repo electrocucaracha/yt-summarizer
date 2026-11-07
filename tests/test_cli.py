@@ -4,6 +4,7 @@ import logging
 import os
 import subprocess
 import sys
+import threading
 import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -84,6 +85,39 @@ def test_cli_reports_context_window_failures(monkeypatch, tmp_path, stage):
     service.store_playlist.assert_not_called()
 
 
+def test_cli_processes_videos_concurrently_using_cpu_count_by_default(
+    monkeypatch, tmp_path
+):
+    """The default worker count uses CPU cores and processes videos in parallel."""
+    first_video = YouTubeVideo(url="https://www.youtube.com/watch?v=video1")
+    second_video = YouTubeVideo(url="https://www.youtube.com/watch?v=video2")
+    barrier = threading.Barrier(2)
+    service = MagicMock()
+    service.get_videos_from_filesystem.return_value = [first_video, second_video]
+
+    def process_video(video, **_kwargs):
+        barrier.wait(timeout=5)
+        return video
+
+    service.upsert_video.side_effect = process_video
+    service.generate_playlist_summary.return_value = "Playlist summary"
+    monkeypatch.setattr(
+        "yt_summarizer.YouTubeSummarizerService", lambda **_kwargs: service
+    )
+    monkeypatch.setattr("yt_summarizer.os.cpu_count", lambda: 2)
+    monkeypatch.chdir(tmp_path)
+
+    result = CliRunner().invoke(
+        cli, ["--notion-db-id", "", "--output-dir", str(tmp_path)]
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "Using 2 worker(s) (auto-selected from 2 CPU core(s))." in result.output
+    service.generate_playlist_summary.assert_called_once_with(
+        [first_video, second_video], playlist_title=None
+    )
+
+
 class _FakeProgressBar:
     """Minimal context manager that mimics Click's progress bar iterator."""
 
@@ -121,10 +155,13 @@ class TestCli(unittest.TestCase):
         mock_service.upsert_video.side_effect = lambda video, playlist_title=None: video
 
         progressbar_calls = []
+        displayed_items = []
 
         def fake_progressbar(iterable, **kwargs):
             items = list(iterable)
             progressbar_calls.append({"items": items, **kwargs})
+            if items:
+                displayed_items.append(kwargs["item_show_func"](items[0]))
             return _FakeProgressBar(items)
 
         mock_progressbar.side_effect = fake_progressbar
@@ -142,10 +179,7 @@ class TestCli(unittest.TestCase):
         )
 
         self.assertEqual(len(progressbar_calls), 1)
-        self.assertEqual(
-            progressbar_calls[0]["item_show_func"]((notion_video.url, notion_video)),
-            notion_video.url,
-        )
+        self.assertEqual(displayed_items, [notion_video.url])
         self.assertNotIn(
             f"Fetching page: {notion_video.url}",
             [call.args[0] for call in mock_echo.call_args_list if call.args],

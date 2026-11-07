@@ -25,6 +25,7 @@ import contextlib
 import logging
 import os
 import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
@@ -106,26 +107,6 @@ def _suppress_litellm_output():
         litellm.turn_off_message_logging = previous_litellm_state[
             "turn_off_message_logging"
         ]
-
-
-def _progress_item_label(item) -> str:
-    """Render the current item inside Click progress bars without extra echoes.
-
-    Examples:
-        >>> from yt_summarizer.model import YouTubeVideo
-        >>> _progress_item_label(
-        ...     (
-        ...         "https://www.youtube.com/watch?v=demo",
-        ...         YouTubeVideo(url="https://www.youtube.com/watch?v=demo"),
-        ...     )
-        ... )
-        'https://www.youtube.com/watch?v=demo'
-        >>> _progress_item_label(YouTubeVideo(url="https://www.youtube.com/watch?v=demo"))
-        'https://www.youtube.com/watch?v=demo'
-    """
-    if isinstance(item, tuple) and item:
-        return str(item[0])
-    return str(getattr(item, "url", item))
 
 
 def _read_token_from_file(file_path: str) -> str:
@@ -311,6 +292,14 @@ def _resolve_api_base(
     show_envvar=True,
     help="Password for proxy authentication",
 )
+@click.option(
+    "--workers",
+    type=click.IntRange(min=1),
+    default=None,
+    envvar="WORKERS",
+    show_envvar=True,
+    help="Number of videos to process concurrently (defaults to the CPU core count).",
+)
 def cli(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-branches
     notion_db_id: str | None,
     notion_token_file: str,
@@ -321,6 +310,7 @@ def cli(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too
     playlist_url: str,
     proxy_username: str,
     proxy_password: str,
+    workers: int | None = None,
 ):
     """Summarize YouTube videos from Notion or a local OKF collection.
 
@@ -414,18 +404,44 @@ def cli(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too
                 service.get_videos_from_filesystem(playlist_title), videos
             )
 
-        # Process videos with progress bar
-        with (
-            _suppress_litellm_output(),
-            click.progressbar(
-                videos.items(),
-                label="Processing videos",
-                item_show_func=_progress_item_label,
-            ) as progress_iter,
-        ):
-            for url, video in progress_iter:
-                logger.info("Processing and storing the video: %s", url)
-                videos[url] = service.upsert_video(video, playlist_title=playlist_title)
+        # Process videos concurrently; cap workers to the queued video count.
+        video_items = list(videos.items())
+        cpu_cores = os.cpu_count() or 1
+        worker_count = (
+            min(workers if workers is not None else cpu_cores, len(video_items))
+            if video_items
+            else 0
+        )
+        if workers is None:
+            click.echo(
+                f"Using {worker_count} worker(s) "
+                f"(auto-selected from {cpu_cores} CPU core(s))."
+            )
+        else:
+            click.echo(f"Using {worker_count} worker(s) (from --workers).")
+
+        if video_items:
+            with (
+                _suppress_litellm_output(),
+                ThreadPoolExecutor(max_workers=worker_count) as executor,
+            ):
+                future_to_url = {}
+                for url, video in video_items:
+                    logger.info("Processing and storing the video: %s", url)
+                    future_to_url[
+                        executor.submit(
+                            service.upsert_video, video, playlist_title=playlist_title
+                        )
+                    ] = url
+
+                with click.progressbar(
+                    as_completed(future_to_url),
+                    length=len(future_to_url),
+                    label="Processing videos",
+                    item_show_func=lambda future: future_to_url[future],
+                ) as progress_iter:
+                    for future in progress_iter:
+                        videos[future_to_url[future]] = future.result()
         click.echo("Generating executive summary...")
         with _suppress_litellm_output(), click_spinner.spinner():
             playlist_summary = service.generate_playlist_summary(
