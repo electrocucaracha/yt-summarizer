@@ -104,9 +104,7 @@ def get_context_window(model: str, api_base: str | None = None) -> int:
                 window = reported_limit
                 source = "litellm metadata"
         # Unknown provider metadata must retain the conservative context fallback.
-        except (
-            Exception
-        ) as exc:  # noqa: BLE001 # pylint: disable=broad-exception-caught
+        except Exception as exc:  # noqa: BLE001
             logger.warning(
                 "Unable to resolve context window for model '%s' (api_base=%s): %s",
                 model,
