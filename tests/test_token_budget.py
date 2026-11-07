@@ -19,7 +19,7 @@ def test_get_prompt_token_limit_uses_litellm_model_metadata(monkeypatch):
     assert observed == [{"model": "known-model", "api_base": None}]
 
 
-def test_get_prompt_token_limit_uses_conservative_fallback(monkeypatch):
+def test_get_prompt_token_limit_uses_conservative_fallback(monkeypatch, caplog):
     """Unknown models fall back to an 8K context window."""
 
     def fail(**_kwargs):
@@ -28,6 +28,8 @@ def test_get_prompt_token_limit_uses_conservative_fallback(monkeypatch):
     monkeypatch.setattr(token_budget.litellm, "get_model_info", fail)
 
     assert token_budget.get_prompt_token_limit("custom/model") == 7_168
+    assert "Unable to resolve context window" in caplog.text
+    assert "model is not mapped" in caplog.text
 
 
 @pytest.mark.parametrize(

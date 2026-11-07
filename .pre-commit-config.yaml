@@ -24,6 +24,25 @@ repos:
     rev: v0.21.0
     hooks:
       - id: yamlfmt
+  - repo: local
+    hooks:
+      - id: python-style
+        name: Check Python style
+        entry: uvx tox -e lint-check
+        language: system
+        files: \.py$|^pyproject\.toml$
+        pass_filenames: false
+      - id: pylint
+        name: Check Python lint
+        entry: uv run --extra test --with pylint pylint src/ tests/
+        language: system
+        files: \.py$|^pyproject\.toml$
+        pass_filenames: false
+      - id: lint-duplicates
+        name: Check for duplicated code
+        entry: make lint-duplicates
+        language: system
+        pass_filenames: false
   - repo: https://github.com/electrocucaracha/ai-prepare-commit-msg
     rev: v20.6.1
     hooks:

@@ -1,0 +1,18 @@
+{
+  "threshold": 0,
+  "reporters": ["consoleFull"],
+  "ignore": [
+    "**/__snapshots__/**",
+    "**/node_modules/**",
+    "**/.git/**",
+    "**/.venv/**",
+    "**/.tox/**",
+    "**/dist/**",
+    "**/build/**",
+    "**/htmlcov/**",
+    "**/.pytest_cache/**",
+    "**/.ruff_cache/**",
+    "**/.mypy_cache/**"
+  ],
+  "absolute": true
+}

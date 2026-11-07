@@ -54,7 +54,7 @@ use_git_change_detection = false
 [tool.tox]
 legacy_tox_ini = """
 [tox]
-envlist = py312
+envlist = py
 skip_missing_interpreters = true
 isolated_build = true
 

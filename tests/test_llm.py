@@ -466,8 +466,9 @@ def test_empty_chunk_responses_fail_explicitly(
     assert not budgeted_completion
 
 
-def test_completion_drops_unsupported_params_and_sets_timeout(monkeypatch):
-    """Reasoning models reject temperature, so unsupported params are dropped."""
+@pytest.fixture(name="completion_request")
+def fixture_completion_request(monkeypatch):
+    """Capture a direct completion without compression or budget reduction."""
     seen = {}
 
     def complete(**kwargs):
@@ -479,54 +480,44 @@ def test_completion_drops_unsupported_params_and_sets_timeout(monkeypatch):
     monkeypatch.setattr(llm, "headroom_compress", None)
     monkeypatch.setattr(llm, "get_prompt_token_limit", lambda *_a: 100000)
     monkeypatch.setattr(llm.litellm, "completion", complete)
+    return seen
+
+
+def test_completion_drops_unsupported_params_and_sets_timeout(completion_request):
+    """Reasoning models reject temperature, so unsupported params are dropped."""
 
     Client(model="github_copilot/gpt-5-mini", api_base=None).summarize("short")
 
-    assert seen["drop_params"] is True
-    assert seen["timeout"] > 0
-    assert "English" in seen["messages"][0]["content"] + seen["messages"][1]["content"]
+    assert completion_request["drop_params"] is True
+    assert completion_request["timeout"] > 0
+    assert "English" in (
+        completion_request["messages"][0]["content"]
+        + completion_request["messages"][1]["content"]
+    )
 
 
-def test_language_option_changes_prompt_language(monkeypatch):
+def test_language_option_changes_prompt_language(completion_request):
     """The requested summary language is named in the prompt."""
-    seen = {}
-
-    def complete(**kwargs):
-        seen.update(kwargs)
-        return SimpleNamespace(
-            choices=[SimpleNamespace(message=SimpleNamespace(content="ok"))]
-        )
-
-    monkeypatch.setattr(llm, "headroom_compress", None)
-    monkeypatch.setattr(llm, "get_prompt_token_limit", lambda *_a: 100000)
-    monkeypatch.setattr(llm.litellm, "completion", complete)
-
     Client(model="custom/m", api_base=None, language="es").summarize("short")
 
-    text = seen["messages"][0]["content"] + seen["messages"][1]["content"]
+    text = (
+        completion_request["messages"][0]["content"]
+        + completion_request["messages"][1]["content"]
+    )
     assert "Spanish" in text
 
 
-def test_ollama_requests_use_chat_model_without_thinking(monkeypatch):
+def test_ollama_requests_use_chat_model_without_thinking(
+    completion_request, monkeypatch
+):
     """Ollama calls use ollama_chat, disable thinking and set num_ctx."""
-    seen = {}
-
-    def complete(**kwargs):
-        seen.update(kwargs)
-        return SimpleNamespace(
-            choices=[SimpleNamespace(message=SimpleNamespace(content="ok"))]
-        )
-
-    monkeypatch.setattr(llm, "headroom_compress", None)
-    monkeypatch.setattr(llm, "get_prompt_token_limit", lambda *_a: 100000)
     monkeypatch.setattr(llm, "get_context_window", lambda *_a: 32768)
-    monkeypatch.setattr(llm.litellm, "completion", complete)
 
     Client(model="ollama/qwen3", api_base="http://h:11434").summarize("short")
 
-    assert seen["model"] == "ollama_chat/qwen3"
-    assert seen["reasoning_effort"] == "none"
-    assert seen["num_ctx"] == 32768
+    assert completion_request["model"] == "ollama_chat/qwen3"
+    assert completion_request["reasoning_effort"] == "none"
+    assert completion_request["num_ctx"] == 32768
 
 
 if __name__ == "__main__":

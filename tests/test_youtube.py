@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 import requests
 
-from yt_summarizer.youtube import Client
+from yt_summarizer.youtube import Client, transcript_languages
 
 
 class TestYouTubeClient(unittest.TestCase):
@@ -120,8 +120,6 @@ if __name__ == "__main__":
 
 def test_transcript_languages_put_requested_language_first():
     """The requested language leads and fallbacks are not duplicated."""
-    from yt_summarizer.youtube import transcript_languages
-
     languages = transcript_languages("es")
     assert languages[0] == "es"
     assert len(languages) == len(set(languages))

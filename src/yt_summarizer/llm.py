@@ -405,16 +405,15 @@ class Client:
         logger.error(message)
         raise LLMContextWindowError(message)
 
-    def _complete(
+    def _prepare_messages(
         self,
         messages: list[dict[str, str]],
         action: str,
-        *,
-        text: str = "",
-        allow_condense: bool = True,
-    ) -> str:
-        """Compress, reduce if needed, and send only a context-sized prompt."""
-        prompt_token_limit = get_prompt_token_limit(self.model, self.api_base)
+        text: str,
+        allow_condense: bool,
+        prompt_token_limit: int,
+    ) -> list[dict[str, str]]:
+        """Clean, compress and reduce source text until the prompt fits."""
         if allow_condense and text:
             cleaned = clean_transcript(text)
             logger.info(
@@ -447,6 +446,21 @@ class Client:
             ) >= count_prompt_tokens(self.model, [{"role": "user", "content": text}]):
                 self._context_error("summarization stopped reducing the token count")
             text = condensed
+        return prepared
+
+    def _complete(
+        self,
+        messages: list[dict[str, str]],
+        action: str,
+        *,
+        text: str = "",
+        allow_condense: bool = True,
+    ) -> str:
+        """Compress, reduce if needed, and send only a context-sized prompt."""
+        prompt_token_limit = get_prompt_token_limit(self.model, self.api_base)
+        prepared = self._prepare_messages(
+            messages, action, text, allow_condense, prompt_token_limit
+        )
 
         try:
             completion_kwargs = {

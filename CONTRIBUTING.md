@@ -55,6 +55,15 @@ workflow audit findings.
 Both `make fmt` and `make lint` also run Pylint against `src/` and `tests/`
 using the project's runtime and test dependencies.
 
+Both targets check duplicated code with the same zero-tolerance JSCPD
+configuration used by CI. `make fmt` checks Python style again after formatting
+and runs the duplicate check last so formatter changes cannot hide a regression.
+Reuse test fixtures for shared setup rather than ignoring duplicated test code.
+Run `make lint-duplicates` for a focused duplicate check (requires Node.js/npm).
+
+Install the repository's hooks with `uvx pre-commit install` to run Python style,
+Pylint, and duplicate checks before each commit.
+
 ## Testing
 
 All contributions must include tests that cover the new functionality.
