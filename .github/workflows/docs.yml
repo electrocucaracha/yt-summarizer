@@ -47,4 +47,4 @@ jobs:
       - name: Check Development environment setup
         run: ~/go/bin/runme run contributing.install contributing.verify
       - name: Check Development process
-        run: ~/go/bin/runme run --parallel contributing.test contributing.fmt
+        run: ~/go/bin/runme run contributing.test contributing.fmt
