@@ -185,8 +185,11 @@ def _format_main_points_table(text: str) -> str:
         line = line.strip()
         if not line:
             continue
-        cleaned = re.sub(r"^([*+\-\d\w]+[.)\]]?\s*)+", "", line).strip()
+        cleaned = re.sub(r"^(?:[-*+•]\s+|\d+[.)]\s+)+", "", line).strip()
+        cleaned = re.sub(r"^[^\w]+", "", cleaned).strip()
         if cleaned:
+            if cleaned[0].islower():
+                cleaned = cleaned[0].upper() + cleaned[1:]
             points.append(cleaned)
 
     if not points:
@@ -641,7 +644,13 @@ def _playlist_entries(videos: list[YouTubeVideo]) -> list[str]:
     """Render a table of talk links and summaries for a playlist index."""
     entries = []
     for video in videos:
-        title = (video.title or video.url).replace("|", "\\|")
+        title = " ".join((video.title or video.url).split())
+        title = (
+            title.replace("\\", "\\\\")
+            .replace("[", "\\[")
+            .replace("]", "\\]")
+            .replace("|", "\\|")
+        )
         summary = _first_sentence(video.summary).replace("|", "\\|")
         entries.append(f"| [{title}]({extract_video_id(video.url)}.md) | {summary} |")
     return entries

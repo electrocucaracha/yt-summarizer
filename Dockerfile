@@ -6,8 +6,9 @@ WORKDIR /app
 
 COPY . /app/
 
+# Install Rust up front to avoid concurrent rustup bootstraps in source builds.
 # hadolint ignore=DL3018
-RUN apk add --no-cache build-base
+RUN apk add --no-cache build-base cargo rust
 
 RUN uv sync --no-editable && \
     uvx pex -o /tmp/yt-summarizer -c yt_summarizer --include-tools .

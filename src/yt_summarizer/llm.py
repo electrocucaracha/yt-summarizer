@@ -118,6 +118,22 @@ def clean_transcript(text: str) -> str:
     return " ".join(_CUE_PATTERN.sub(" ", text).split())
 
 
+def _normalize_main_points(text: str) -> str:
+    """Normalize generated points into clean, capitalized Markdown bullets."""
+    points = []
+    for line in text.splitlines():
+        point = line.strip()
+        if not point or point.startswith("```"):
+            continue
+        point = re.sub(r"^(?:(?:[-*+•]\s+)|(?:\d+[.)]\s+))+", "", point)
+        point = re.sub(r"^[^\w]+", "", point).strip()
+        if point:
+            if point[0].islower():
+                point = point[0].upper() + point[1:]
+            points.append(f"- {point}")
+    return "\n".join(points)
+
+
 def _split_into_chunks(text: str, size: int) -> list[str]:
     """Split text into chunks of at most ``size`` characters on word boundaries.
 
@@ -305,6 +321,10 @@ class Client:
                     "You are a professional content analysis assistant. "
                     "Extract the main points from a video transcript. "
                     "Return only clear bullet points based strictly on the transcript. "
+                    "Use one complete point per line, formatted as '- Point'. "
+                    "Start each point with an uppercase letter or digit. "
+                    "Do not start points with punctuation or include numbering, "
+                    "headings, introductions, conclusions, or code fences. "
                     f"The final output must not exceed {MAIN_POINTS_CHAR_LIMIT} "
                     "characters, "
                     f"including spaces. Write the bullet points in {self.language_name}."
@@ -327,6 +347,7 @@ class Client:
         main_points = self._complete(
             messages=messages, action="extract main points", text=text
         )
+        main_points = _normalize_main_points(main_points)
         logger.debug(
             "Successfully extracted main points of %d characters",
             len(main_points),

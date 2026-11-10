@@ -102,15 +102,31 @@ class TestLLMClient(unittest.TestCase):
         self.assertIn(self.mock_model, str(exc_info.exception))
 
     @patch("yt_summarizer.llm.litellm.completion")
-    def test_get_main_points_returns_response_content(self, mock_completion):
-        """Successful completions should return the message content."""
+    def test_get_main_points_normalizes_response(self, mock_completion):
+        """Generated points are returned as clean, capitalized bullets."""
         mock_completion.return_value = MagicMock(
-            choices=[MagicMock(message=MagicMock(content="- point 1\n- point 2"))]
+            choices=[
+                MagicMock(
+                    message=MagicMock(
+                        content=(
+                            "```markdown\n"
+                            "1. ,first point\n"
+                            "2) : second point\n"
+                            "- third point\n"
+                            "```"
+                        )
+                    )
+                )
+            ]
         )
 
         self.assertEqual(
             self.client.get_main_points("Transcript text"),
-            "- point 1\n- point 2",
+            "- First point\n- Second point\n- Third point",
+        )
+        messages = mock_completion.call_args.kwargs["messages"]
+        self.assertIn(
+            "Start each point with an uppercase letter", messages[0]["content"]
         )
 
     @patch("yt_summarizer.llm.litellm.completion")
@@ -321,7 +337,8 @@ def test_long_inputs_fit_every_request(budgeted_completion, model, method):
     client = Client(model=model, api_base="http://localhost:11434")
     text = "first detail " + "word " * 2000 + "last detail"
 
-    assert getattr(client, method)(text) == "Partial summary"
+    expected = "- Partial summary" if method == "get_main_points" else "Partial summary"
+    assert getattr(client, method)(text) == expected
 
     assert len(budgeted_completion) > 1
     excerpts = _first_pass_excerpts(budgeted_completion)

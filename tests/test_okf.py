@@ -62,6 +62,23 @@ class TestOKFClient(unittest.TestCase):
         )
         self.assertIn(f"[Watch on YouTube]({self.video.url})", content)
 
+    def test_write_video_cleans_malformed_main_point_prefixes(self):
+        """Main-point tables preserve words and remove punctuation and lowercase starts."""
+        video = YouTubeVideo(
+            url=self.video.url,
+            title=self.video.title,
+            summary=self.video.summary,
+            main_points="1. ,first detail\n- :second detail\nordinary point",
+        )
+
+        content = self.client.write_video(video, "K8s Weekly").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("|   1 | First detail |", content)
+        self.assertIn("|   2 | Second detail |", content)
+        self.assertIn("|   3 | Ordinary point |", content)
+
     def test_write_video_thumbnail_supports_short_urls(self):
         """Short YouTube URLs retain the case-sensitive video ID in thumbnails."""
         video = YouTubeVideo(
@@ -159,6 +176,26 @@ class TestOKFClient(unittest.TestCase):
         self.assertIn("# Conference Knowledge Collections", root_index)
         self.assertIn("## Collections", root_index)
         self.assertIn("- [K8s Weekly (1 note)](k8s-weekly/index.md)", root_index)
+
+    def test_write_playlist_escapes_talk_title_link(self):
+        """Markdown-significant title characters should not break talk links."""
+        video = YouTubeVideo(
+            url=self.video.url,
+            title="What's [New] | Kubernetes",
+            summary="A short intro.",
+        )
+
+        self.client.write_video(video, playlist_title="K8s Weekly")
+        self.client.write_playlist([video], playlist_title="K8s Weekly")
+
+        playlist_index = (self.root / "k8s-weekly" / "index.md").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn(
+            r"| [What's \[New\] \| Kubernetes](video1abc.md) | A short intro. |",
+            playlist_index,
+        )
+        self.assertTrue((self.root / "k8s-weekly" / "video1abc.md").is_file())
 
     def test_write_playlist_creates_config_and_log(self):
         """The bundle root should include _config.yml and log.md."""

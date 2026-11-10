@@ -15,17 +15,17 @@ repos:
     hooks:
       - id: trailing-whitespace
       - id: check-yaml
-  - repo: https://github.com/igorshubovych/markdownlint-cli
-    rev: v0.50.0
-    hooks:
-      - id: markdownlint
-        files: \.(md|mdown|markdown)$
   - repo: https://github.com/google/yamlfmt
     rev: v0.21.0
     hooks:
       - id: yamlfmt
   - repo: local
     hooks:
+      - id: markdownlint
+        name: Markdown lint
+        entry: npx --yes --package markdownlint-cli@0.50.0 markdownlint
+        language: system
+        files: \.(md|mdown|markdown)$
       - id: python-style
         name: Check Python style
         entry: uvx tox -e lint-check
