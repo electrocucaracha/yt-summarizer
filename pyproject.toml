@@ -85,35 +85,27 @@ description = Fix code style
 deps =
     ruff
     black
-    isort
 skip_install = true
 setenv =
     RUFF_CACHE_DIR = {envtmpdir}/ruff-cache
 commands =
     ruff check --fix src/ tests/
+    ruff format src/ tests/
     black src/ tests/
-    isort src/ tests/
 
 [testenv:lint-check]
 description = Check code style
 deps =
     ruff
     black
-    isort
 skip_install = true
 setenv =
     RUFF_CACHE_DIR = {envtmpdir}/ruff-cache
 commands =
     ruff check src/ tests/
+    ruff format --check src/ tests/
     black --check src/ tests/
-    isort --check src/ tests/
 """
-
-[tool.isort]
-profile = "black"
-line_length = 88
-src_paths = ["src"]
-known_first_party = ["yt_summarizer"]
 
 [tool.ruff]
 line-length = 88
@@ -126,3 +118,6 @@ line-ending = "auto"
 [[tool.mypy.overrides]]
 module = "requests.*"
 ignore_missing_imports = true
+
+[tool.ruff.lint]
+select = ["I"]
