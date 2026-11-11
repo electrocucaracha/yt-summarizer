@@ -107,6 +107,12 @@ commands =
     black --check src/ tests/
 """
 
+[tool.isort]
+profile = "black"
+line_length = 88
+src_paths = ["src"]
+known_first_party = ["yt_summarizer"]
+
 [tool.ruff]
 line-length = 88
 
