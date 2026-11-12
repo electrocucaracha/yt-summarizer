@@ -85,6 +85,7 @@ description = Fix code style
 deps =
     ruff
     black
+    isort
 skip_install = true
 setenv =
     RUFF_CACHE_DIR = {envtmpdir}/ruff-cache
@@ -92,12 +93,14 @@ commands =
     ruff check --fix src/ tests/
     ruff format src/ tests/
     black src/ tests/
+    isort --settings-path pyproject.toml src/ tests/
 
 [testenv:lint-check]
 description = Check code style
 deps =
     ruff
     black
+    isort
 skip_install = true
 setenv =
     RUFF_CACHE_DIR = {envtmpdir}/ruff-cache
@@ -105,6 +108,7 @@ commands =
     ruff check src/ tests/
     ruff format --check src/ tests/
     black --check src/ tests/
+    isort --check-only --diff --settings-path pyproject.toml src/ tests/
 """
 
 [tool.isort]

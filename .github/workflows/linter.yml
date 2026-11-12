@@ -53,7 +53,7 @@ jobs:
       validate_overrides: |-
         {
           "LINTER_RULES_PATH": ".github/linters",
-          "PYTHON_ISORT_CONFIG_FILE": ".isort.cfg",
+          "PYTHON_ISORT_CONFIG_FILE": "pyproject.toml",
           "VALIDATE_PRE_COMMIT": false,
           "SAVE_SUPER_LINTER_OUTPUT": true,
           "KUBERNETES_KUBECONFORM_OPTIONS": "-ignore-missing-schemas",
