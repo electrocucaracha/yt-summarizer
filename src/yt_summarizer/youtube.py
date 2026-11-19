@@ -26,6 +26,7 @@ import time
 from urllib.parse import parse_qs, urlparse
 
 import requests
+import yt_dlp
 from bs4 import BeautifulSoup
 from youtube_transcript_api import YouTubeTranscriptApi
 from youtube_transcript_api._errors import (
@@ -36,6 +37,8 @@ from youtube_transcript_api._errors import (
     VideoUnplayable,
 )
 from youtube_transcript_api.proxies import WebshareProxyConfig
+
+from .model import YOUTUBE_STAT_FIELDS, normalize_youtube_stats
 
 logger = logging.getLogger(__name__)
 DEFAULT_LANGUAGE = "en"
@@ -51,8 +54,7 @@ def transcript_languages(language: str = DEFAULT_LANGUAGE) -> tuple[str, ...]:
 class Client:
     """Client for extracting data from YouTube videos.
 
-    Provides methods to retrieve video metadata (title) and complete transcripts
-    from YouTube videos by parsing the video URL and using official APIs.
+    Provides methods to retrieve video titles, public counts, and transcripts.
     """
 
     def __init__(
@@ -77,6 +79,29 @@ class Client:
             )
             logger.debug("Using Webshare proxy for transcript retrieval")
             self.ytt_api = YouTubeTranscriptApi(proxy_config=self.proxy_config)
+
+    def get_video_stats(self, url: str) -> dict[str, int]:
+        """Fetch public video and channel counts without downloading media."""
+        options = {
+            "quiet": True,
+            "ignore_no_formats_error": True,
+            "socket_timeout": 30,
+            "logger": logger,
+        }
+        if self.proxy_config:
+            options["proxy"] = self.proxy_config.url
+        try:
+            with yt_dlp.YoutubeDL(options) as downloader:
+                info = downloader.extract_info(
+                    url, download=False, ie_key="Youtube", process=False
+                )
+        except yt_dlp.utils.DownloadError:
+            # yt-dlp already logs extraction errors through the supplied logger.
+            return {}
+        info = info or {}
+        return normalize_youtube_stats(
+            {key: info.get(source) for key, source in YOUTUBE_STAT_FIELDS.items()}
+        )
 
     def get_video_transcript(  # pylint: disable=too-many-return-statements,too-many-branches
         self, url: str

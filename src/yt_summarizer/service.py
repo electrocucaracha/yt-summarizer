@@ -290,7 +290,7 @@ class YouTubeSummarizerService:
     def upsert_video(
         self, video: YouTubeVideo, playlist_title: str | None = None
     ) -> YouTubeVideo:
-        """Persist a video in every configured backend when its content changed.
+        """Persist changed content and refresh public counts for OKF notes.
 
         The method enriches the supplied video, compares the before/after content
         hash, and only writes ``Title``, ``URL``, ``Summary``, and
@@ -300,32 +300,26 @@ class YouTubeSummarizerService:
             video: A YouTubeVideo object with updated metadata.
             playlist_title: Playlist used to place the OKF concept document.
         """
-        # Compute the hash before processing
-        original_hash = video.compute_hash()
-
-        # Process the video
         updated_video = self._process_video(video)
-
-        # Compute the hash after processing
-        updated_hash = updated_video.compute_hash()
-
-        # Check if the video has changed
-        if original_hash != updated_hash:
-            logger.info("Video has changed. Updating configured storage backends.")
+        content_changed = video.compute_hash() != updated_video.compute_hash()
+        if content_changed:
             self._upsert_video_in_notion(updated_video)
-            self._upsert_video_in_filesystem(updated_video, playlist_title)
-        else:
-            if (
-                self.okf_client
-                and updated_video.summary
+
+        if self.okf_client:
+            updated_video.youtube_stats.update(
+                self.youtube_client.get_video_stats(updated_video.url)
+            )
+        if self.okf_client and (
+            content_changed
+            or video.youtube_stats != updated_video.youtube_stats
+            or (
+                updated_video.summary
                 and not self.okf_client.has_video(updated_video, playlist_title)
-            ):
-                logger.info(
-                    "Video missing on filesystem. Writing concept to OKF bundle."
-                )
-                self._upsert_video_in_filesystem(updated_video, playlist_title)
-            else:
-                logger.info("No changes detected for video: %s", video.url)
+            )
+        ):
+            self._upsert_video_in_filesystem(updated_video, playlist_title)
+        elif not content_changed:
+            logger.info("No changes detected for video: %s", video.url)
 
         return updated_video
 

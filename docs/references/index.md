@@ -68,6 +68,12 @@ Video files use the YouTube video ID as their filename.
 ```
 
 Video documents contain `Summary`, `Main Points`, and `Citations` sections.
+When available, public YouTube counts are recorded in the `youtube_stats`
+frontmatter mapping as `view_count`, `like_count`, and
+`channel_subscriber_count`. Subscriber counts are for the channel, not the
+talk, and may be rounded. Each run refreshes the counts YouTube exposes and
+keeps the last known values for counts it cannot fetch. Notion is unchanged.
+
 Playlist documents contain an `Executive Summary` and links to the video
 documents.
 

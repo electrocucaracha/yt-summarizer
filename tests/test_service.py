@@ -4,10 +4,14 @@
 # pylint: disable=protected-access
 
 import unittest
+from tempfile import TemporaryDirectory
 from unittest.mock import MagicMock, patch
+
+from yt_dlp.utils import DownloadError
 
 from yt_summarizer.llm import EXECUTIVE_SUMMARY_CHAR_LIMIT
 from yt_summarizer.model import YouTubeVideo
+from yt_summarizer.okf import Client as OKFClient
 from yt_summarizer.service import YouTubeSummarizerService
 
 
@@ -199,6 +203,46 @@ class TestYouTubeSummarizerService(unittest.TestCase):
                     self.service.okf_client.write_video.assert_called_once_with(
                         video, playlist_title="K8s"
                     )
+
+    @patch("yt_summarizer.youtube.yt_dlp.YoutubeDL")
+    def test_upsert_refreshes_only_available_okf_stats(self, mock_youtube_dl):
+        """Public counts round-trip without regenerating content or writing Notion."""
+        video = YouTubeVideo(
+            url="https://www.youtube.com/watch?v=abcdefghijk",
+            title="Demo",
+            summary="Existing summary.",
+            main_points="- Point",
+            youtube_stats={"view_count": 5, "like_count": 1},
+        )
+        extract = mock_youtube_dl.return_value.__enter__.return_value.extract_info
+        extract.side_effect = [
+            {"view_count": 42, "like_count": 0, "channel_follower_count": 900},
+            {"view_count": 43, "like_count": None, "channel_follower_count": True},
+            DownloadError("Unavailable"),
+        ]
+        self.service.llm_client = MagicMock()
+        self.service.notion_client = MagicMock()
+        with TemporaryDirectory() as output_dir:
+            store = self.service.okf_client = OKFClient(output_dir)
+            store.write_video(video)
+            for expected_views in (42, 43, 43):
+                result = self.service.upsert_video(store.get_videos()[0])
+                self.assertEqual(
+                    {
+                        "view_count": expected_views,
+                        "like_count": 0,
+                        "channel_subscriber_count": 900,
+                    },
+                    store.get_video(result).youtube_stats,
+                )
+                self.assertEqual(video.summary, result.summary)
+
+        extract.assert_called_with(
+            video.url, download=False, ie_key="Youtube", process=False
+        )
+        self.service.llm_client.summarize.assert_not_called()
+        self.service.llm_client.get_main_points.assert_not_called()
+        self.assertEqual([], self.service.notion_client.mock_calls)
 
     def test_process_video_enriches_a_copy_of_incomplete_video(self):
         """Missing metadata and analysis should be fetched without mutating input."""

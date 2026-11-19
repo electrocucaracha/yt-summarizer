@@ -300,6 +300,7 @@ class Client:
             title=str(fields.get("title", video.title or "")),
             summary=_extract_section(content, "Summary"),
             main_points=_extract_section(content, "Main Points"),
+            youtube_stats=fields.get("youtube_stats"),
         )
 
     def get_videos(self, playlist_title: str | None = None) -> list[YouTubeVideo]:
@@ -333,6 +334,7 @@ class Client:
                     title=str(fields.get("title", "")),
                     summary=_extract_section(content, "Summary"),
                     main_points=_extract_section(content, "Main Points"),
+                    youtube_stats=fields.get("youtube_stats"),
                 )
             )
 
@@ -373,6 +375,7 @@ class Client:
                 "type": VIDEO_TYPE,
                 "description": _first_sentence(video.summary),
                 "resource": video.url,
+                "youtube_stats": video.youtube_stats or None,
                 "tags": [playlist_slug, "video", "learning"],
                 "status": "stable",
                 "generated": {

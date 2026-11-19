@@ -22,8 +22,27 @@ serves as the core data structure for the application.
 
 import hashlib
 import logging
+from collections.abc import Mapping
 
 logger = logging.getLogger(__name__)
+
+YOUTUBE_STAT_FIELDS = {
+    "view_count": "view_count",
+    "like_count": "like_count",
+    "channel_subscriber_count": "channel_follower_count",
+}
+
+
+def normalize_youtube_stats(data: object) -> dict[str, int]:
+    """Keep only recognized, non-negative counts, including zero."""
+    if not isinstance(data, Mapping):
+        return {}
+
+    return {
+        key: value
+        for key in YOUTUBE_STAT_FIELDS
+        if isinstance(value := data.get(key), int) and value >= 0
+    }
 
 
 class YouTubeVideo:
@@ -36,6 +55,7 @@ class YouTubeVideo:
         transcript: The complete video transcript.
         summary: LLM-generated summary of the video content.
         main_points: LLM-extracted key points and takeaways from the video.
+        youtube_stats: Public YouTube counts stored only in OKF.
 
     Example:
         >>> video = YouTubeVideo(
@@ -62,6 +82,8 @@ class YouTubeVideo:
         transcript: str = "",
         summary: str = "",
         main_points: str = "",
+        *,
+        youtube_stats: Mapping[str, object] | None = None,
     ):
         """Initialize a YouTubeVideo instance.
 
@@ -72,6 +94,7 @@ class YouTubeVideo:
             transcript: Video transcript text (optional, can be filled later).
             summary: Generated summary (optional, can be filled later).
             main_points: Extracted key points (optional, can be filled later).
+            youtube_stats: Previously observed public YouTube counts.
         """
         self.id = id
         self.url = url
@@ -79,6 +102,7 @@ class YouTubeVideo:
         self.transcript = transcript
         self.summary = summary
         self.main_points = main_points
+        self.youtube_stats = normalize_youtube_stats(youtube_stats)
 
     def __repr__(self):
         """Return a detailed representation of the YouTubeVideo object.
@@ -114,14 +138,13 @@ class YouTubeVideo:
             and self.transcript == other.transcript
             and self.summary == other.summary
             and self.main_points == other.main_points
+            and self.youtube_stats == other.youtube_stats
         )
 
     def compute_hash(self):
         """Compute a content hash for change detection.
 
-        The hash currently ignores ``id`` and ``transcript`` because Notion
-        writes are triggered only by changes to the persisted presentation
-        fields.
+        The hash covers only the presentation fields persisted in Notion.
 
         Examples:
             >>> first = YouTubeVideo(

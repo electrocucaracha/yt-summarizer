@@ -125,9 +125,12 @@ def _merge_stored_videos(
     for stored in stored_videos:
         if stored.url not in videos:
             videos[stored.url] = stored
-        elif not videos[stored.url].summary and stored.summary:
-            videos[stored.url].summary = stored.summary
-            videos[stored.url].main_points = stored.main_points
+        else:
+            video = videos[stored.url]
+            video.youtube_stats = stored.youtube_stats | video.youtube_stats
+            if not video.summary and stored.summary:
+                video.summary = stored.summary
+                video.main_points = stored.main_points
 
 
 @contextlib.contextmanager
