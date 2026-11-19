@@ -9,6 +9,72 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [8.5.0] - 2026-11-19
+
+### Added
+
+- Normalized YouTube public counts are now persisted and refreshed in OKF notes, enabling timely updates without requiring content changes. [373cbfc0](https://github.com/electrocucaracha/yt-summarizer/commit/373cbfc066a8586214610743c2ace8c20b8a7bae)
+
+## [8.4.0] - 2026-11-13
+
+### Added
+
+- Introduced CODEOWNERS to automatically request review from @electrocucaracha for all changes, improving accountability and streamlining the review process. [4d427df1](https://github.com/electrocucaracha/yt-summarizer/commit/4d427df17ae6a5954b39a8a41dfbbb35bfb735e3)
+
+## [8.3.2] - 2026-11-13
+
+### Changed
+
+- Updated several project dependencies to their latest versions. [fb4fa1cc](https://github.com/electrocucaracha/yt-summarizer/commit/fb4fa1ccf5f70bbb6db6816654c62d31a98dc754)
+
+## [8.3.1] - 2026-11-12
+
+### Changed
+
+- Enabled consistent code style enforcement across the project by updating the linter workflow and tox environment to use pyproject.toml as the isort configuration file. [658278cc](https://github.com/electrocucaracha/yt-summarizer/commit/658278ccec843b740c0eda34a4f492d043130c44)
+
+## [8.3.0] - 2026-11-11
+
+### Added
+
+- Enabled standardized import sorting across the codebase by introducing a configuration for isort in pyproject.toml that adheres to the black profile, ensuring consistent import order and style without introducing any breaking behavior or requiring migration. [561994d3](https://github.com/electrocucaracha/yt-summarizer/commit/561994d3fba4016a5b774e0b0660028d3cd66e80)
+
+## [8.2.7] - 2026-11-11
+
+### Changed
+
+- Enabled improved import sorting and formatting capabilities by replacing isort with ruff, reducing tooling redundancy and consolidating formatting under a single tool. [19eb5222](https://github.com/electrocucaracha/yt-summarizer/commit/19eb52221d993a87f2721e388592c563b7e3ad24)
+
+## [8.2.6] - 2026-11-10
+
+### Changed
+
+- Enabled detection of duplicated code in the CI workflow, helping to identify and reduce code duplication and improve code quality. [3a9c07e8](https://github.com/electrocucaracha/yt-summarizer/commit/3a9c07e8a32831698a4325937b3937f961aaaae2)
+
+## [8.2.5] - 2026-11-10
+
+### Fixed
+
+- Normalized main points are now consistently formatted, capitalized, and free of extraneous punctuation, numbering, and code fences, and playlist table generation now escapes markdown-specific characters in video titles to avoid broken links. [1202bb58](https://github.com/electrocucaracha/yt-summarizer/commit/1202bb5814cb45f423f0b072c9a35c07d04aeefb)
+
+## [8.2.4] - 2026-11-07
+
+### Changed
+
+- Updated GitHub Actions and hook versions across CI workflows and pre-commit configuration to their latest releases, improving compatibility, resolving bugs, and ensuring continued support for workflow execution. [e04bd4a8](https://github.com/electrocucaracha/yt-summarizer/commit/e04bd4a82112378870d157bdd73a784ea4daac59)
+
+## [8.2.3] - 2026-11-07
+
+### Changed
+
+- Simplified the maintenance of linter configuration and CI steps by delegating to an upstream, versioned workflow, preserving custom rules and exclusions without altering linting behavior. [4b2628a0](https://github.com/electrocucaracha/yt-summarizer/commit/4b2628a0313fd06582a7d52c1e2591b0e8d8b75d)
+
+## [8.2.2] - 2026-11-07
+
+### Changed
+
+- Enabled zero-tolerance duplicate code checking in both CI and local development workflows, ensuring consistent enforcement of code duplication policy and preventing duplication regressions. [73286bac](https://github.com/electrocucaracha/yt-summarizer/commit/73286bac1115f118c33c65db9a9cf4e32e6870fd)
+
 ## [8.2.1] - 2026-11-07
 
 ### Changed
