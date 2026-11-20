@@ -34,14 +34,19 @@ YOUTUBE_STAT_FIELDS = {
 
 
 def normalize_youtube_stats(data: object) -> dict[str, int]:
-    """Keep only recognized, non-negative counts, including zero."""
+    """Keep only recognized, non-negative counts, including zero.
+
+    ``bool`` is excluded because it is a subclass of ``int``.
+    """
     if not isinstance(data, Mapping):
         return {}
 
     return {
         key: value
         for key in YOUTUBE_STAT_FIELDS
-        if isinstance(value := data.get(key), int) and value >= 0
+        if isinstance(value := data.get(key), int)
+        and not isinstance(value, bool)
+        and value >= 0
     }
 
 
