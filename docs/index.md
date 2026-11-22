@@ -8,6 +8,7 @@ This project is organized using the Diátaxis framework.
 Practical guides for specific tasks.
 
 - [Running the Application](how-to-guides/running-application.md)
+- [Updating YouTube Metrics](how-to-guides/update-youtube-metrics.md)
 
 ## Explanation
 

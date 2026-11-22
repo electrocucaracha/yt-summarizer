@@ -94,5 +94,6 @@ with these names:
 ## Additional Documentation
 
 - [Running the application](docs/how-to-guides/running-application.md)
+- [Updating YouTube metrics](docs/how-to-guides/update-youtube-metrics.md)
 - [Workflow explanation](docs/explanations/workflow.md)
 - [Executive summary samples](docs/explanations/summary-samples.md)

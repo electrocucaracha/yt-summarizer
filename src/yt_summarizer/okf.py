@@ -341,6 +341,51 @@ class Client:
         logger.info("Loaded %d video(s) from OKF bundle at %s", len(videos), directory)
         return videos
 
+    def get_video_notes(self) -> list[tuple[Path, YouTubeVideo]]:
+        """Return every video note under the bundle root with its parsed video."""
+        notes = []
+        if not self.root.is_dir():
+            return notes
+        for path in sorted(self.root.glob("*/*.md")):
+            if path.name in _RESERVED_FILENAMES:
+                continue
+            fields = _parse_frontmatter(path.read_text(encoding="utf-8"))
+            url = str(fields.get("resource", ""))
+            if url:
+                notes.append(
+                    (
+                        path,
+                        YouTubeVideo(
+                            url=url,
+                            title=str(fields.get("title", "")),
+                            youtube_stats=fields.get("youtube_stats"),
+                        ),
+                    )
+                )
+        return notes
+
+    def update_video_stats(self, path: Path, stats: dict[str, int]) -> None:
+        """Rewrite only the ``youtube_stats`` frontmatter field of a video note."""
+        content = path.read_text(encoding="utf-8")
+        block = "\n".join(_render_frontmatter_field("youtube_stats", stats)) + "\n"
+        content, replaced = re.subn(
+            r"^youtube_stats:\n(?:[ \t]+.*\n)*",
+            lambda _: block,
+            content,
+            count=1,
+            flags=re.MULTILINE,
+        )
+        if not replaced:
+            content, replaced = re.subn(
+                r"^(resource:.*\n)",
+                lambda m: m.group(1) + block,
+                content,
+                count=1,
+                flags=re.MULTILINE,
+            )
+        if replaced:
+            path.write_text(content, encoding="utf-8")
+
     def write_video(
         self,
         video: YouTubeVideo,

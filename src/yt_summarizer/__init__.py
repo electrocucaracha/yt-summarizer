@@ -386,6 +386,11 @@ def _resolve_api_base(
     show_envvar=True,
     help="Language code for generated summaries (e.g. en, es).",
 )
+@click.option(
+    "--update-metrics",
+    is_flag=True,
+    help="Only refresh YouTube metrics of already summarized videos in the OKF collection.",
+)
 def cli(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-branches
     notion_db_id: str | None,
     notion_token_file: str,
@@ -398,6 +403,7 @@ def cli(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too
     proxy_password: str,
     workers: int | None = None,
     language: str = "en",
+    update_metrics: bool = False,
 ):
     """Summarize YouTube videos from Notion or a local OKF collection.
 
@@ -474,6 +480,15 @@ def cli(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too
             output_dir=output_dir,
             language=language,
         )
+
+        if update_metrics:
+            if not output_dir:
+                raise click.UsageError("--update-metrics requires an OKF output dir.")
+            click.echo("Updating YouTube metrics of stored videos...")
+            updated, failed = service.update_youtube_stats()
+            click.echo(f"Updated {updated} video(s); {failed} failed.")
+            completed_successfully = True
+            return
 
         videos = {}
         if notion_db_id:

@@ -265,3 +265,27 @@ class TestOKFClient(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_update_video_stats_rewrites_only_stats(tmp_path):
+    """Verify that updating video stats preserves the rest of the file."""
+    client = Client(root=str(tmp_path))
+    video = YouTubeVideo(
+        url="https://www.youtube.com/watch?v=abc123", title="T", summary="S."
+    )
+    path = client.write_video(video, playlist_title="Conf")
+    before = path.read_text(encoding="utf-8")
+
+    client.update_video_stats(path, {"view_count": 5, "like_count": 2})
+
+    after = path.read_text(encoding="utf-8")
+    assert "youtube_stats:\n  view_count: 5\n  like_count: 2\n" in after
+    assert after.split("resource:")[1].split("\n", 1)[1].startswith("youtube_stats")
+    assert (
+        after.replace("youtube_stats:\n  view_count: 5\n  like_count: 2\n", "")
+        == before
+    )
+    assert client.get_video_notes()[0][1].youtube_stats == {
+        "view_count": 5,
+        "like_count": 2,
+    }

@@ -21,6 +21,7 @@ summaries.
 | `--model`             | `ollama/llama3.2`                        | `LLM_MODEL`          | LiteLLM model identifier                           |
 | `--api-base`          | Ollama local endpoint for most models    | `LLM_API_BASE`       | LLM API base URL                                   |
 | `--playlist-url`      | none                                     | none                 | YouTube playlist to add to the queue               |
+| `--update-metrics`    | off                                      | none                 | Only refresh `youtube_stats` of stored video notes |
 | `--proxy-username`    | none                                     | `PROXY_USERNAME`     | Webshare proxy username                            |
 | `--proxy-password`    | none                                     | `PROXY_PASSWORD`     | Webshare proxy password                            |
 | `--log-level`         | `INFO`                                   | none                 | `DEBUG`, `INFO`, `WARNING`, `ERROR`, or `CRITICAL` |
@@ -73,6 +74,14 @@ frontmatter mapping as `view_count`, `like_count`, and
 `channel_subscriber_count`. Subscriber counts are for the channel, not the
 talk, and may be rounded. Each run refreshes the counts YouTube exposes and
 keeps the last known values for counts it cannot fetch. Notion is unchanged.
+
+With `--update-metrics`, the command skips playlist and LLM processing.
+It requires an OKF bundle root (`--output-dir`, or the `docs` default when Notion
+is not configured) and rewrites only the `youtube_stats` frontmatter of every
+`<root>/<playlist-slug>/<video-id>.md` note. All other content, including
+`generated.at`, is left unchanged. Notes whose metrics cannot be fetched are
+skipped and reported as failed. See
+[Update YouTube metrics](../how-to-guides/update-youtube-metrics.md).
 
 Playlist documents contain an `Executive Summary` and links to the video
 documents.

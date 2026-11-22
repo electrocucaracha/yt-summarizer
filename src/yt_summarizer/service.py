@@ -323,6 +323,27 @@ class YouTubeSummarizerService:
 
         return updated_video
 
+    def update_youtube_stats(self) -> tuple[int, int]:
+        """Refresh only ``youtube_stats`` of every stored OKF video note.
+
+        Returns:
+            A ``(updated, failed)`` tuple of note counts.
+        """
+        if not self.okf_client:
+            return 0, 0
+        updated = failed = 0
+        for path, video in self.okf_client.get_video_notes():
+            fresh = self.youtube_client.get_video_stats(video.url)
+            if not fresh:
+                logger.warning("No YouTube stats retrieved for %s", video.url)
+                failed += 1
+                continue
+            merged = video.youtube_stats | fresh
+            if merged != video.youtube_stats:
+                self.okf_client.update_video_stats(path, merged)
+            updated += 1
+        return updated, failed
+
     def _upsert_video_in_notion(self, video: YouTubeVideo) -> None:
         """Create or update the Notion row backing ``video``."""
         if not self.notion_client or not self.notion_db_id:
