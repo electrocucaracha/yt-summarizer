@@ -343,12 +343,15 @@ class Client:
 
     def get_video_notes(self) -> list[tuple[Path, YouTubeVideo]]:
         """Return every video note under the bundle root with its parsed video."""
-        notes = []
+        notes: list[tuple[Path, YouTubeVideo]] = []
+
         if not self.root.is_dir():
             return notes
+
         for path in sorted(self.root.glob("*/*.md")):
             if path.name in _RESERVED_FILENAMES:
                 continue
+
             fields = _parse_frontmatter(path.read_text(encoding="utf-8"))
             url = str(fields.get("resource", ""))
             if url:
@@ -362,6 +365,7 @@ class Client:
                         ),
                     )
                 )
+
         return notes
 
     def update_video_stats(self, path: Path, stats: dict[str, int]) -> None:
