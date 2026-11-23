@@ -51,7 +51,7 @@ class TestOKFClient(unittest.TestCase):
         self.assertIn("- video", content)
         self.assertIn("- learning", content)
         self.assertIn("status: stable", content)
-        self.assertIn("by: process:yt-summarizer-okf", content)
+        self.assertIn('by: "process:yt-summarizer-okf"', content)
         self.assertIn("# Summary", content)
         self.assertIn("# Main Points", content)
         self.assertIn("|   # | Main point |", content)
@@ -61,6 +61,15 @@ class TestOKFClient(unittest.TestCase):
             content,
         )
         self.assertIn(f"[Watch on YouTube]({self.video.url})", content)
+
+    def test_write_video_frontmatter_keeps_generated_metadata_as_strings(self):
+        """Nested string metadata such as the ISO timestamp must not load as datetime."""
+        path = self.client.write_video(self.video, playlist_title="K8s Weekly")
+
+        frontmatter = path.read_text(encoding="utf-8").split("\n---", 1)[0][4:]
+        generated = yaml.safe_load(frontmatter)["generated"]
+        self.assertEqual("process:yt-summarizer-okf", generated["by"])
+        self.assertIsInstance(generated["at"], str)
 
     def test_write_video_cleans_malformed_main_point_prefixes(self):
         """Main-point tables preserve words and remove punctuation and lowercase starts."""

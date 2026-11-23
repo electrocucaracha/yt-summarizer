@@ -122,14 +122,12 @@ def _render_frontmatter_mapping(key: str, value: dict[str, Any]) -> list[str]:
 
 
 def _render_mapping_scalar(value: Any) -> str:
-    """Render a scalar nested in a frontmatter mapping."""
-    if isinstance(value, str) and (
-        ": " in value
-        or value.startswith(
-            ("@", "%", "[", "{", "*", "&", "?", "|", ">", '"', "'", "#")
-        )
-        or "\n" in value
-    ):
+    """Render a scalar nested in a frontmatter mapping.
+
+    Strings are always quoted so YAML cannot reinterpret them (e.g. ISO
+    timestamps would otherwise load as ``datetime`` objects).
+    """
+    if isinstance(value, str):
         return _escape_yaml(value)
     return str(value)
 
