@@ -30,7 +30,8 @@ Updated 120 video(s); 3 failed.
 ```
 
 All playlists (conferences) under the root are processed in one run.
-Videos are fetched one at a time, so large collections take a while.
+Videos are fetched in parallel (one worker per CPU core), and only metadata is requested:
+no transcripts, subtitles, or media manifests are downloaded.
 
 ## Check the result
 

@@ -87,6 +87,7 @@ class Client:
             "ignore_no_formats_error": True,
             "socket_timeout": 30,
             "logger": logger,
+            "extractor_args": {"youtube": {"skip": ["translated_subs", "hls", "dash"]}},
         }
         if self.proxy_config:
             options["proxy"] = self.proxy_config.url

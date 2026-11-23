@@ -23,6 +23,8 @@ of all components for efficient video summarization.
 
 import copy
 import logging
+import os
+from concurrent.futures import ThreadPoolExecutor
 
 import click
 import httpx
@@ -35,6 +37,8 @@ from .model import YouTubeVideo
 from .notion import Client as NotionClient
 from .okf import Client as OKFClient
 from .youtube import Client as YouTubeClient
+
+METRICS_MAX_WORKERS = os.cpu_count() or 1
 
 logger = logging.getLogger(__name__)
 PLAYLIST_SUMMARY_CHUNK_SIZE = 25
@@ -331,17 +335,21 @@ class YouTubeSummarizerService:
         """
         if not self.okf_client:
             return 0, 0
-        updated = failed = 0
-        for path, video in self.okf_client.get_video_notes():
-            fresh = self.youtube_client.get_video_stats(video.url)
-            if not fresh:
-                logger.warning("No YouTube stats retrieved for %s", video.url)
-                failed += 1
-                continue
-            merged = video.youtube_stats | fresh
-            if merged != video.youtube_stats:
-                self.okf_client.update_video_stats(path, merged)
-            updated += 1
+        notes = list(self.okf_client.get_video_notes())
+        with ThreadPoolExecutor(max_workers=METRICS_MAX_WORKERS) as pool:
+            results = pool.map(
+                lambda note: self.youtube_client.get_video_stats(note[1].url), notes
+            )
+            updated = failed = 0
+            for (path, video), fresh in zip(notes, results):
+                if not fresh:
+                    logger.warning("No YouTube stats retrieved for %s", video.url)
+                    failed += 1
+                    continue
+                merged = video.youtube_stats | fresh
+                if merged != video.youtube_stats:
+                    self.okf_client.update_video_stats(path, merged)
+                updated += 1
         return updated, failed
 
     def _upsert_video_in_notion(self, video: YouTubeVideo) -> None:
