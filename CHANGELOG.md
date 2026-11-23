@@ -9,6 +9,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [8.7.3] - 2026-11-23
+
+### Changed
+
+- Optimized the service to fetch YouTube video metrics in parallel, resulting in significantly faster metrics collection for large collections without altering the output or affecting other data sources. [a2c16417](https://github.com/electrocucaracha/yt-summarizer/commit/a2c16417668b72ec50ce40ea01390d96f5735607)
+
+## [8.7.2] - 2026-11-23
+
+### Fixed
+
+- Stabilized YAML frontmatter mappings by always quoting string values to prevent accidental type conversion and ensure consistent behavior. [b63cd9cd](https://github.com/electrocucaracha/yt-summarizer/commit/b63cd9cd73f1431025d577077d7609886dd8141c)
+
+## [8.7.1] - 2026-11-22
+
+### Changed
+
+- Clarified the get_video_notes method's intent by explicitly defining the notes variable's type and adhering to code style consistency without altering functionality. [445cd935](https://github.com/electrocucaracha/yt-summarizer/commit/445cd9352a5b30a14053423753b878e9a8ff8d8c)
+
+## [8.7.0] - 2026-11-22
+
+### Added
+
+- Optimized the CLI workflow by enabling automatic refresh of YouTube metrics for OKF video notes without affecting existing content or requiring Notion/LLM access. [5821adb0](https://github.com/electrocucaracha/yt-summarizer/commit/5821adb0f754174103cadb6130508ded9950236f)
+
+## [8.6.1] - 2026-11-19
+
+### Fixed
+
+- Normalized YouTube stat counts now correctly exclude boolean values, ensuring accurate data storage by retaining only true integer counts, including zero and other non-negative integers. [d35f97ce](https://github.com/electrocucaracha/yt-summarizer/commit/d35f97ce3f053ffdbb4ed4619dd0ad47e9765090)
+
+## [8.6.0] - 2026-11-19
+
+### Added
+
+- Normalized release notes for versions 8.2.2 through 8.5.0 have been introduced, providing clear version history and context for users and maintainers. [b37644ad](https://github.com/electrocucaracha/yt-summarizer/commit/b37644ad2b3ffffd94019043aa2ab665250d53f0)
+
 ## [8.5.0] - 2026-11-19
 
 ### Added
